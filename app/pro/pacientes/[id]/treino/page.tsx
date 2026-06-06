@@ -5,12 +5,12 @@ import WorkoutEditor from './WorkoutEditor'
 export default async function TreinoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const [{ data: patient }, { data: exercises }] = await Promise.all([
-    supabase.from('patients').select('*').eq('id', id).eq('professional_id', PROF_ID).single(),
-    supabase.from('exercises').select('*').eq('professional_id', PROF_ID).eq('active', true).order('name'),
+    supabase.from('patients').select('*').eq('id', id).eq('professional_id', user.id).single(),
+    supabase.from('exercises').select('*').eq('professional_id', user.id).eq('active', true).order('name'),
   ])
 
   if (!patient) notFound()
@@ -27,7 +27,7 @@ export default async function TreinoPage({ params }: { params: Promise<{ id: str
   if (!plan) {
     const { data: newPlan } = await supabase
       .from('workout_plans')
-      .insert({ patient_id: id, professional_id: PROF_ID, title: 'Plano de Treino', active: true })
+      .insert({ patient_id: id, professional_id: user.id, title: 'Plano de Treino', active: true })
       .select()
       .single()
     plan = { ...newPlan, workout_days: [] }

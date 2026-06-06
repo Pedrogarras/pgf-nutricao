@@ -1,14 +1,17 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 import NewPatientModal from './NewPatientModal'
 
 export default async function PacientesPage() {
   const supabase = await createClient()
-  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
   const { data: patients } = await supabase
     .from('patients')
     .select('*')
-    .eq('professional_id', PROF_ID)
+    .eq('professional_id', user.id)
     .eq('active', true)
     .order('full_name')
 
@@ -19,7 +22,7 @@ export default async function PacientesPage() {
           <h1 className="text-lg font-bold">Pacientes</h1>
           <p className="text-xs text-gray-400">{patients?.length ?? 0} pacientes ativos</p>
         </div>
-        <NewPatientModal professionalId={PROF_ID} />
+        <NewPatientModal professionalId={user.id} />
       </div>
 
       <div className="p-8">

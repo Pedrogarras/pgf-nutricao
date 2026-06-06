@@ -1,10 +1,13 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
 export default async function TreinoPage() {
   const supabase = await createClient()
-  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
-  const { data: patients } = await supabase.from('patients').select('id,full_name').eq('professional_id', PROF_ID).eq('active', true).order('full_name')
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: patients } = await supabase.from('patients').select('id,full_name').eq('professional_id', user.id).eq('active', true).order('full_name')
 
   return (
     <div>

@@ -4,8 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function createPatient(formData: FormData) {
   const supabase = await createClient()
-  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
-  
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autorizado.' }
+  const PROF_ID = user.id
+
   const fullName = (formData.get('full_name') as string).trim()
   const dob = formData.get('date_of_birth') as string
 

@@ -5,14 +5,14 @@ import DietEditor from './DietEditor'
 export default async function DietaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   const { data: patient } = await supabase
     .from('patients')
     .select('*')
     .eq('id', id)
-    .eq('professional_id', PROF_ID)
+    .eq('professional_id', user.id)
     .single()
 
   if (!patient) notFound()
@@ -30,7 +30,7 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
   if (!plan) {
     const { data: newPlan } = await supabase
       .from('diet_plans')
-      .insert({ patient_id: id, professional_id: PROF_ID, title: 'Plano Alimentar', active: true })
+      .insert({ patient_id: id, professional_id: user.id, title: 'Plano Alimentar', active: true })
       .select()
       .single()
     plan = { ...newPlan, meals: [] }
@@ -45,5 +45,5 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
     })
   }
 
-  return <DietEditor patient={patient} plan={plan} professionalId={PROF_ID} />
+  return <DietEditor patient={patient} plan={plan} professionalId={user.id} />
 }
