@@ -7,7 +7,6 @@ export default async function AlunoPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?tipo=aluno')
 
-  // Busca o paciente
   const { data: patient } = await supabase
     .from('patients')
     .select('*')
@@ -19,15 +18,18 @@ export default async function AlunoPage() {
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="text-center">
           <div className="text-4xl mb-3">⚠️</div>
-          <div className="font-semibold">Perfil não encontrado</div>
-          <div className="text-sm text-gray-400 mt-1">Contate seu nutricionista.</div>
-          <form action={logout} className="mt-4"><button type="submit" className="btn btn-ghost btn-sm">Sair</button></form>
+          <div className="font-semibold text-white">Perfil não encontrado</div>
+          <div className="text-sm mt-1" style={{ color: 'rgba(226,232,248,0.5)' }}>Contate seu nutricionista.</div>
+          <form action={logout} className="mt-4">
+            <button type="submit" className="btn btn-sm text-white/60 border border-white/10 hover:border-white/30 rounded-lg px-4 py-1.5 text-xs">
+              Sair
+            </button>
+          </form>
         </div>
       </div>
     )
   }
 
-  // Busca plano de dieta publicado
   const { data: dietPlan } = await supabase
     .from('diet_plans')
     .select(`*, meals(*, meal_foods(*, food:foods(*)))`)
@@ -37,7 +39,6 @@ export default async function AlunoPage() {
     .limit(1)
     .single()
 
-  // Busca plano de treino publicado
   const { data: workoutPlan } = await supabase
     .from('workout_plans')
     .select(`*, workout_days(*, workout_exercises(*, exercise:exercises(*)))`)
@@ -64,48 +65,52 @@ export default async function AlunoPage() {
   }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
 
   return (
-    <div className="max-w-md mx-auto pb-8">
+    <div className="max-w-md mx-auto pb-10">
       {/* Header */}
-      <div className="bg-pgf-600 px-6 pt-10 pb-16">
+      <div className="px-6 pt-10 pb-20 relative overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, #0D163A 0%, #1E2B6B 60%, #141E4A 100%)' }}>
+        {/* Top accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(90,111,204,0.7), transparent)' }} />
+
         <div className="flex justify-between items-start mb-2">
           <div>
-            <div className="text-xs text-white/60 mb-0.5">Olá 👋</div>
-            <div className="text-2xl font-black text-white">{patient.full_name.split(' ')[0]}</div>
-            <div className="text-xs text-white/60 mt-0.5">{patient.goal ?? 'Plano personalizado'}</div>
+            <div className="text-xs font-medium mb-0.5" style={{ color: 'rgba(197,205,240,0.55)' }}>Olá 👋</div>
+            <div className="text-2xl font-black text-white tracking-tight">{patient.full_name.split(' ')[0]}</div>
+            <div className="text-xs mt-1" style={{ color: 'rgba(197,205,240,0.5)' }}>{patient.goal ?? 'Plano personalizado'}</div>
           </div>
           <div className="text-right">
-            <div className="text-xs text-white/40 font-bold tracking-widest uppercase">PGF</div>
-            <div className="text-[10px] text-white/30">Nutricionista</div>
+            <div className="text-xs font-black tracking-[3px] uppercase" style={{ color: 'rgba(197,205,240,0.5)' }}>PGF</div>
+            <div className="text-[10px] mt-0.5" style={{ color: 'rgba(197,205,240,0.3)' }}>Nutricionista</div>
             <form action={logout} className="mt-3">
-              <button type="submit" className="text-white/40 text-xs underline">Sair</button>
+              <button type="submit" className="text-xs underline" style={{ color: 'rgba(197,205,240,0.35)' }}>Sair</button>
             </form>
           </div>
         </div>
       </div>
 
-      <div className="px-4 -mt-10 space-y-4">
+      <div className="px-4 -mt-12 space-y-4">
         {/* Macro card */}
         {dietPlan && (
-          <div className="bg-white rounded-2xl p-4 shadow-lg">
-            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-3">
+          <div className="rounded-2xl p-4 shadow-xl" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+            <div className="text-[11px] font-bold uppercase tracking-wide mb-3" style={{ color: 'rgba(197,205,240,0.5)' }}>
               Meta do dia{dietPlan.kcal_goal ? ` — ${dietPlan.kcal_goal} kcal` : ''}
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
-                <div className="text-xl font-black text-gray-900">{r(totals.kcal)}</div>
-                <div className="text-[10px] text-gray-400">kcal</div>
+                <div className="text-xl font-black text-white">{r(totals.kcal)}</div>
+                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>kcal</div>
               </div>
               <div>
-                <div className="text-xl font-black text-blue-600">{r(totals.protein)}g</div>
-                <div className="text-[10px] text-gray-400">Prot</div>
+                <div className="text-xl font-black" style={{ color: '#93C5FD' }}>{r(totals.protein)}g</div>
+                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Prot</div>
               </div>
               <div>
-                <div className="text-xl font-black text-amber-600">{r(totals.carbs)}g</div>
-                <div className="text-[10px] text-gray-400">Carb</div>
+                <div className="text-xl font-black" style={{ color: '#FCD34D' }}>{r(totals.carbs)}g</div>
+                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Carb</div>
               </div>
               <div>
-                <div className="text-xl font-black text-red-500">{r(totals.fat)}g</div>
-                <div className="text-[10px] text-gray-400">Gord</div>
+                <div className="text-xl font-black" style={{ color: '#FCA5A5' }}>{r(totals.fat)}g</div>
+                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Gord</div>
               </div>
             </div>
           </div>
@@ -114,24 +119,30 @@ export default async function AlunoPage() {
         {/* Diet plan */}
         {dietPlan ? (
           <>
-            <div className="text-sm font-bold text-gray-700 mt-2">🥗 Plano Alimentar</div>
+            <div className="text-sm font-bold mt-2" style={{ color: 'rgba(197,205,240,0.7)' }}>🥗 Plano Alimentar</div>
             {meals.map((meal: { id: string; emoji: string; name: string; time_start: string | null; meal_foods: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }[] }) => {
               const mealKcal = r(meal.meal_foods?.reduce((acc: number, mf: { quantity_g: number; food: { kcal: number; portion_g: number } }) => acc + mf.food.kcal * (mf.quantity_g / (mf.food.portion_g || 100)), 0) ?? 0)
               return (
-                <div key={meal.id} className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                <div key={meal.id} className="rounded-xl overflow-hidden shadow-md"
+                  style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
                   <div className="flex items-center gap-3 px-4 py-3.5">
                     <span className="text-xl">{meal.emoji}</span>
                     <div className="flex-1">
-                      <div className="font-bold text-sm">{meal.name}</div>
-                      <div className="text-xs text-gray-400">{meal.time_start ?? ''} · {mealKcal} kcal</div>
+                      <div className="font-bold text-sm text-white">{meal.name}</div>
+                      <div className="text-xs" style={{ color: 'rgba(197,205,240,0.45)' }}>
+                        {meal.time_start ?? ''} · {mealKcal} kcal
+                      </div>
                     </div>
                   </div>
                   {meal.meal_foods?.length > 0 && (
-                    <div className="border-t border-gray-50">
+                    <div style={{ borderTop: '1px solid var(--dark-border)' }}>
                       {meal.meal_foods.map((mf: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }) => (
-                        <div key={mf.id} className="flex justify-between px-4 py-2 text-sm border-b border-gray-50 last:border-0">
-                          <span className="font-medium text-gray-800">{mf.food.name}</span>
-                          <span className="text-gray-400 text-xs">{mf.quantity_description ?? `${mf.quantity_g}g`}</span>
+                        <div key={mf.id} className="flex justify-between px-4 py-2 text-sm"
+                          style={{ borderBottom: '1px solid var(--dark-border)' }}>
+                          <span className="font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>{mf.food.name}</span>
+                          <span className="text-xs" style={{ color: 'rgba(197,205,240,0.45)' }}>
+                            {mf.quantity_description ?? `${mf.quantity_g}g`}
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -141,56 +152,79 @@ export default async function AlunoPage() {
             })}
 
             {dietPlan.notes && (
-              <div className="bg-pgf-50 rounded-xl px-4 py-3 border border-pgf-100">
-                <div className="text-xs font-bold text-pgf-600 mb-1">📋 Orientações</div>
-                <div className="text-xs text-gray-600 leading-relaxed">{dietPlan.notes}</div>
+              <div className="rounded-xl px-4 py-3" style={{ background: 'rgba(90,111,204,0.12)', border: '1px solid rgba(90,111,204,0.25)' }}>
+                <div className="text-xs font-bold mb-1" style={{ color: '#9BAAE6' }}>📋 Orientações</div>
+                <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,248,0.7)' }}>{dietPlan.notes}</div>
               </div>
             )}
 
-            <button onClick={() => window.print()} className="w-full btn btn-outline justify-center py-3">
+            <button onClick={() => window.print()}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
+              style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)', color: '#9BAAE6' }}>
               📄 Baixar Plano em PDF
             </button>
           </>
         ) : (
-          <div className="bg-white rounded-2xl p-6 text-center shadow-sm">
+          <div className="rounded-2xl p-6 text-center"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
             <div className="text-3xl mb-2">🥗</div>
-            <div className="font-semibold text-gray-600">Plano alimentar ainda não publicado</div>
-            <div className="text-sm text-gray-400 mt-1">Seu nutricionista irá liberar em breve.</div>
+            <div className="font-semibold" style={{ color: 'rgba(226,232,248,0.7)' }}>Plano alimentar ainda não publicado</div>
+            <div className="text-sm mt-1" style={{ color: 'rgba(197,205,240,0.4)' }}>Seu nutricionista irá liberar em breve.</div>
           </div>
         )}
 
         {/* Workout plan */}
         {workoutPlan && days.length > 0 && (
           <>
-            <div className="text-sm font-bold text-gray-700 mt-4">💪 Treino</div>
+            <div className="text-sm font-bold mt-4" style={{ color: 'rgba(197,205,240,0.7)' }}>💪 Treino</div>
             {days.map((day: { id: string; name: string; workout_exercises: { id: string; exercise: { name: string; muscle_group: string | null; video_url: string | null }; sets: number | null; reps: string | null; rest_seconds: number | null; notes: string | null }[] }) => (
-              <div key={day.id} className="bg-white rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                <div className="bg-pgf-50 px-4 py-3 font-bold text-pgf-700 text-sm">💪 {day.name}</div>
+              <div key={day.id} className="rounded-xl overflow-hidden shadow-md"
+                style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+                <div className="px-4 py-3 font-bold text-sm"
+                  style={{ background: 'rgba(90,111,204,0.15)', color: '#C5CDF0', borderBottom: '1px solid var(--dark-border)' }}>
+                  💪 {day.name}
+                </div>
                 {day.workout_exercises.map(we => (
-                  <div key={we.id} className="px-4 py-3 border-b border-gray-50 last:border-0">
+                  <div key={we.id} className="px-4 py-3" style={{ borderBottom: '1px solid var(--dark-border)' }}>
                     <div className="flex justify-between">
                       <div>
-                        <div className="font-medium text-sm">{we.exercise.name}</div>
-                        {we.exercise.muscle_group && <div className="text-xs text-pgf-500">{we.exercise.muscle_group}</div>}
+                        <div className="font-medium text-sm" style={{ color: 'rgba(226,232,248,0.9)' }}>{we.exercise.name}</div>
+                        {we.exercise.muscle_group && (
+                          <div className="text-xs" style={{ color: '#9BAAE6' }}>{we.exercise.muscle_group}</div>
+                        )}
                       </div>
-                      <div className="text-right text-xs text-gray-500">
+                      <div className="text-right text-xs" style={{ color: 'rgba(197,205,240,0.5)' }}>
                         <div>{we.sets ? `${we.sets}×` : ''}{we.reps ?? ''}</div>
                         {we.rest_seconds && <div>{we.rest_seconds}s descanso</div>}
                       </div>
                     </div>
                     {we.exercise.video_url && (
                       <a href={we.exercise.video_url} target="_blank" rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs text-pgf-500 underline">
+                        className="mt-2 inline-flex items-center gap-1 text-xs underline" style={{ color: '#9BAAE6' }}>
                         🎥 Ver vídeo
                       </a>
                     )}
-                    {we.notes && <div className="text-xs text-gray-400 mt-1 italic">{we.notes}</div>}
+                    {we.notes && (
+                      <div className="text-xs mt-1 italic" style={{ color: 'rgba(197,205,240,0.4)' }}>{we.notes}</div>
+                    )}
                   </div>
                 ))}
               </div>
             ))}
           </>
         )}
+
+        {/* Footer ornament */}
+        <div className="flex items-center justify-center gap-3 pt-4 pb-2" style={{ opacity: 0.2 }}>
+          <div className="w-12 h-px bg-white" />
+          <div className="w-1.5 h-1.5 rotate-45 border border-white" />
+          <div className="w-1 h-1 rotate-45 bg-white" />
+          <div className="w-1.5 h-1.5 rotate-45 border border-white" />
+          <div className="w-12 h-px bg-white" />
+        </div>
+        <p className="text-center text-xs pb-4" style={{ color: 'rgba(197,205,240,0.25)' }}>
+          Pedro Garrastazu Frey · Nutricionista
+        </p>
       </div>
     </div>
   )

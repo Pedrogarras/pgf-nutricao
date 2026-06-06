@@ -34,6 +34,18 @@ function planTotal(meals: LocalMeal[]) {
 }
 function r(n: number) { return Math.round(n * 10) / 10 }
 
+// Regra de 3: calcula descrição proporcional ao peso com base na porção do alimento
+function computeDesc(qty: number, food: LocalFood): string {
+  const base = food.portion_g || 100
+  const baseDesc = food.portion_description
+  if (baseDesc && base > 0) {
+    const ratio = qty / base
+    const fmt = ratio % 1 === 0 ? ratio.toString() : (Math.round(ratio * 10) / 10).toString()
+    return `${fmt} ${baseDesc} (${qty}g)`
+  }
+  return `${qty}g`
+}
+
 function sourceBadge(source?: string, label?: string) {
   const text = label || source || ''
   if (!text || text === 'custom') return null
@@ -187,14 +199,18 @@ function AddFoodModal({ meal, onClose, onAdded }: { meal: LocalMeal; onClose: ()
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="form-label">Quantidade (g ou ml)</label>
-                  <input type="number" step="0.5" value={quantity}
-                    onChange={e => setQuantity(e.target.value)} className="form-input" />
+                  <input type="number" step="0.5" min="0.5" value={quantity}
+                    onChange={e => {
+                      setQuantity(e.target.value)
+                      const q = parseFloat(e.target.value)
+                      if (selectedFood && !isNaN(q) && q > 0) setDescription(computeDesc(q, selectedFood))
+                    }} className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Descrição da medida</label>
+                  <label className="form-label">Medida caseira (editável)</label>
                   <input value={description}
                     onChange={e => setDescription(e.target.value)} className="form-input"
-                    placeholder="2 col. de sopa (30g)" />
+                    placeholder="ex: 2 col. de sopa (30g)" />
                 </div>
               </div>
 
@@ -299,15 +315,19 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="form-label">Quantidade (g)</label>
-                  <input type="number" step="0.5" value={quantity}
-                    onChange={e => setQuantity(e.target.value)} className="form-input" />
+                  <label className="form-label">Quantidade (g ou ml)</label>
+                  <input type="number" step="0.5" min="0.5" value={quantity}
+                    onChange={e => {
+                      setQuantity(e.target.value)
+                      const q = parseFloat(e.target.value)
+                      if (selectedFood && !isNaN(q) && q > 0) setDescription(computeDesc(q, selectedFood))
+                    }} className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Descrição da medida</label>
+                  <label className="form-label">Medida caseira (editável)</label>
                   <input value={description}
                     onChange={e => setDescription(e.target.value)} className="form-input"
-                    placeholder="2 col. de sopa (30g)" />
+                    placeholder="ex: 2 col. de sopa (30g)" />
                 </div>
               </div>
 
@@ -440,17 +460,11 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
   async function handleQtyChange(mfId: string, qty: number) {
     const mf = meal.meal_foods.find(m => m.id === mfId)
     if (!mf) return
-    // Auto-recalcula substitutos para mesma faixa calórica
+
+    const newDesc = computeDesc(qty, mf.food)
     const targetKcal = calcMacros(qty, mf.food).kcal
-    for (const sub of mf.substitutes ?? []) {
-      const newQty = sub.food.kcal > 0 ? Math.round((targetKcal / sub.food.kcal) * (sub.food.portion_g || 100)) : sub.quantity_g
-      await fetch('/api/substitutes', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sub.id, quantity_g: newQty, quantity_description: `${newQty}g` })
-      })
-    }
-    await updateMealFood(mfId, qty)
+
+    // Atualização otimista imediata na UI
     onUpdate({
       ...meal,
       meal_foods: meal.meal_foods.map(m => {
@@ -458,11 +472,22 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
         const tKcal = calcMacros(qty, m.food).kcal
         const updatedSubs = (m.substitutes ?? []).map(sub => {
           const newQty = sub.food.kcal > 0 ? Math.round((tKcal / sub.food.kcal) * (sub.food.portion_g || 100)) : sub.quantity_g
-          return { ...sub, quantity_g: newQty, quantity_description: `${newQty}g` }
+          return { ...sub, quantity_g: newQty, quantity_description: computeDesc(newQty, sub.food) }
         })
-        return { ...m, quantity_g: qty, substitutes: updatedSubs }
+        return { ...m, quantity_g: qty, quantity_description: newDesc, substitutes: updatedSubs }
       })
     })
+
+    // Persiste no banco em background
+    for (const sub of mf.substitutes ?? []) {
+      const newQty = sub.food.kcal > 0 ? Math.round((targetKcal / sub.food.kcal) * (sub.food.portion_g || 100)) : sub.quantity_g
+      await fetch('/api/substitutes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sub.id, quantity_g: newQty, quantity_description: computeDesc(newQty, sub.food) })
+      })
+    }
+    await updateMealFood(mfId, qty, newDesc)
   }
 
   function handleSubAdded(mfId: string, sub: LocalSubstitute) {

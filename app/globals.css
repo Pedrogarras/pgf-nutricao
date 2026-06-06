@@ -6,6 +6,19 @@
   --pgf-blue: #2B3A8E;
   --pgf-blue-light: #3D52B0;
   --pgf-blue-pale: #EEF1FB;
+
+  /* Dark theme tokens */
+  --dark-bg:      #09152A;
+  --dark-surface: #0F1E3A;
+  --dark-card:    #132244;
+  --dark-card-2:  #182B55;
+  --dark-border:  rgba(255, 255, 255, 0.08);
+  --dark-border2: rgba(255, 255, 255, 0.13);
+  --dark-text:    #E2E8F8;
+  --dark-muted:   rgba(226, 232, 248, 0.55);
+  --dark-faint:   rgba(226, 232, 248, 0.30);
+  --dark-hover:   rgba(255, 255, 255, 0.05);
+  --dark-active:  rgba(90, 111, 204, 0.25);
 }
 
 @layer base {
@@ -82,12 +95,194 @@
   }
 }
 
+/* ────────────────────────────────────────────────────
+   DARK THEME — scoped under .dark-theme wrapper
+   Applied to the pro dashboard and aluno area
+   ──────────────────────────────────────────────────── */
+
+.dark-theme {
+  background-color: var(--dark-bg);
+  color: var(--dark-text);
+}
+
+/* Component overrides */
+.dark-theme .card {
+  background: var(--dark-card) !important;
+  border-color: var(--dark-border) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
+}
+.dark-theme .card-header {
+  border-color: var(--dark-border) !important;
+}
+.dark-theme .card-title {
+  color: var(--dark-text) !important;
+}
+.dark-theme .card-body {
+  color: var(--dark-text);
+}
+
+/* Forms */
+.dark-theme .form-label {
+  color: rgba(226,232,248,0.8) !important;
+}
+.dark-theme .form-input,
+.dark-theme .form-select,
+.dark-theme .form-textarea {
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-border2) !important;
+  color: var(--dark-text) !important;
+}
+.dark-theme .form-input::placeholder,
+.dark-theme .form-textarea::placeholder {
+  color: var(--dark-faint);
+}
+.dark-theme .form-input:focus,
+.dark-theme .form-select:focus,
+.dark-theme .form-textarea:focus {
+  border-color: #5A6FCC !important;
+  box-shadow: 0 0 0 2px rgba(90,111,204,0.25) !important;
+}
+
+/* Buttons */
+.dark-theme .btn-outline {
+  color: #9BAAE6 !important;
+  border-color: var(--dark-border2) !important;
+  background: transparent !important;
+}
+.dark-theme .btn-outline:hover {
+  background: var(--dark-hover) !important;
+  color: var(--dark-text) !important;
+}
+.dark-theme .btn-ghost {
+  color: var(--dark-muted) !important;
+  border-color: var(--dark-border2) !important;
+  background: transparent !important;
+}
+.dark-theme .btn-ghost:hover {
+  background: var(--dark-hover) !important;
+}
+
+/* Badges */
+.dark-theme .badge-blue  { background: rgba(90,111,204,0.2) !important; color: #9BAAE6 !important; }
+.dark-theme .badge-gray  { background: rgba(255,255,255,0.07) !important; color: var(--dark-muted) !important; }
+.dark-theme .badge-green { background: rgba(34,197,94,0.15) !important; color: #86efac !important; }
+.dark-theme .badge-orange{ background: rgba(251,146,60,0.15) !important; color: #fdba74 !important; }
+.dark-theme .badge-red   { background: rgba(239,68,68,0.15) !important; color: #fca5a5 !important; }
+
+/* Tabs */
+.dark-theme .tab { color: var(--dark-muted) !important; }
+.dark-theme .tab:hover { color: var(--dark-text) !important; }
+.dark-theme .tab.active { color: #9BAAE6 !important; border-color: #5A6FCC !important; }
+
+/* ── Global element overrides in dark-theme ── */
+
+/* All plain white backgrounds */
+.dark-theme [class*="bg-white"] {
+  background-color: var(--dark-card) !important;
+}
+/* Gray-50 backgrounds (table headers, subtle sections) */
+.dark-theme [class*="bg-gray-50"] {
+  background-color: var(--dark-surface) !important;
+}
+/* pgf-50 backgrounds (notices, section tints) */
+.dark-theme [class*="bg-pgf-50"] {
+  background-color: rgba(90,111,204,0.12) !important;
+}
+
+/* Text color overrides */
+.dark-theme [class*="text-gray-900"],
+.dark-theme [class*="text-gray-800"] {
+  color: var(--dark-text) !important;
+}
+.dark-theme [class*="text-gray-700"],
+.dark-theme [class*="text-gray-600"] {
+  color: rgba(226,232,248,0.7) !important;
+}
+.dark-theme [class*="text-gray-500"],
+.dark-theme [class*="text-gray-400"] {
+  color: var(--dark-faint) !important;
+}
+
+/* Border overrides */
+.dark-theme [class*="border-gray-100"],
+.dark-theme [class*="border-gray-200"] {
+  border-color: var(--dark-border) !important;
+}
+
+/* Table rows */
+.dark-theme tbody tr:hover {
+  background-color: var(--dark-hover) !important;
+}
+.dark-theme thead th {
+  background-color: var(--dark-surface) !important;
+  color: var(--dark-faint) !important;
+  border-color: var(--dark-border) !important;
+}
+.dark-theme tbody tr {
+  border-color: var(--dark-border) !important;
+}
+
+/* Modal / dialog overlays */
+.dark-theme [class*="bg-white"][class*="rounded-2xl"],
+.dark-theme [class*="bg-white"][class*="rounded-xl"] {
+  background: var(--dark-card) !important;
+  border: 1px solid var(--dark-border);
+}
+
+/* Sticky top bars inside pages */
+.dark-theme .sticky {
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-border) !important;
+}
+
+/* Scrollbar for dark theme */
+.dark-theme ::-webkit-scrollbar { width: 6px; height: 6px; }
+.dark-theme ::-webkit-scrollbar-track { background: var(--dark-bg); }
+.dark-theme ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 3px; }
+.dark-theme ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+/* Input elements that aren't using component classes */
+.dark-theme input:not([class*="btn"]),
+.dark-theme select:not([class*="btn"]),
+.dark-theme textarea:not([class*="btn"]) {
+  background: var(--dark-surface) !important;
+  border-color: var(--dark-border2) !important;
+  color: var(--dark-text) !important;
+}
+.dark-theme input::placeholder,
+.dark-theme textarea::placeholder {
+  color: var(--dark-faint) !important;
+}
+
+/* pgf-100 avatar backgrounds */
+.dark-theme [class*="bg-pgf-100"] {
+  background: rgba(90,111,204,0.2) !important;
+}
+.dark-theme [class*="text-pgf-600"] {
+  color: #9BAAE6 !important;
+}
+.dark-theme [class*="text-pgf-500"] {
+  color: #9BAAE6 !important;
+}
+.dark-theme [class*="text-pgf-700"] {
+  color: #C5CDF0 !important;
+}
+.dark-theme [class*="border-pgf-100"] {
+  border-color: rgba(90,111,204,0.25) !important;
+}
+
 /* Print styles — PDF gerado via CSS */
 @media print {
   .no-print { display: none !important; }
   .print-only { display: block !important; }
   body { background: white; }
   .card { box-shadow: none; border: 1px solid #e5e7eb; }
+  /* Reset dark theme for print */
+  .dark-theme, .dark-theme * {
+    background-color: white !important;
+    color: black !important;
+    border-color: #e5e7eb !important;
+  }
 }
 
 .print-only { display: none; }
