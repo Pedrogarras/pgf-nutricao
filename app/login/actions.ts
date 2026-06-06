@@ -2,6 +2,8 @@
 import { redirect } from 'next/navigation'
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 
+// redirect is used in logout only
+
 export async function loginProfessional(formData: FormData) {
   const supabase = await createClient()
   const email = formData.get('email') as string
@@ -10,7 +12,7 @@ export async function loginProfessional(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) return { error: 'E-mail ou senha incorretos.' }
 
-  redirect('/pro/dashboard')
+  return { redirectTo: '/pro/dashboard' }
 }
 
 export async function loginStudent(formData: FormData) {
@@ -68,7 +70,7 @@ export async function loginStudent(formData: FormData) {
 
   if (signInError) return { error: 'Erro ao entrar. Contate o nutricionista.' }
 
-  redirect('/aluno')
+  return { redirectTo: '/aluno' }
 }
 
 export async function logout() {

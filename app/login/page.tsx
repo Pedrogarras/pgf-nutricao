@@ -1,5 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { loginProfessional, loginStudent } from './actions'
 
@@ -129,6 +130,7 @@ function Pendant() {
 }
 
 export default function LoginPage() {
+  const router = useRouter()
   const [tab, setTab] = useState<'pro' | 'aluno'>('pro')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -140,6 +142,7 @@ export default function LoginPage() {
     startTransition(async () => {
       const result = await loginProfessional(fd)
       if (result?.error) setError(result.error)
+      else if (result?.redirectTo) router.push(result.redirectTo)
     })
   }
 
@@ -150,6 +153,7 @@ export default function LoginPage() {
     startTransition(async () => {
       const result = await loginStudent(fd)
       if (result?.error) setError(result.error)
+      else if (result?.redirectTo) router.push(result.redirectTo)
     })
   }
 
