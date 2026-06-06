@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
 
@@ -5,9 +6,11 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (!user) redirect('/login')
+
   const [{ count: totalPatients }, { data: recentPatients }] = await Promise.all([
-    supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user!.id).eq('active', true),
-    supabase.from('patients').select('id,full_name,goal,weight_kg,created_at').eq('professional_id', user!.id).eq('active', true).order('created_at', { ascending: false }).limit(5),
+    supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
+    supabase.from('patients').select('id,full_name,goal,weight_kg,created_at').eq('professional_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(5),
   ])
 
   const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })

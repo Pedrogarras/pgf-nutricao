@@ -1,8 +1,6 @@
 'use client'
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { loginProfessional, loginStudent } from './actions'
 
 /* Polycyclic aromatic ring (benzene/naphthalene honeycomb) SVG background */
 function AromaticRingPattern() {
@@ -130,7 +128,6 @@ function Pendant() {
 }
 
 export default function LoginPage() {
-  const router = useRouter()
   const [tab, setTab] = useState<'pro' | 'aluno'>('pro')
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
@@ -140,9 +137,15 @@ export default function LoginPage() {
     setError('')
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = await loginProfessional(fd)
-      if (result?.error) setError(result.error)
-      else if (result?.redirectTo) router.push(result.redirectTo)
+      const res = await fetch('/api/auth/login-pro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: fd.get('email'), password: fd.get('password') }),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.error) setError(data.error)
+      else window.location.href = data.redirectTo
     })
   }
 
@@ -151,9 +154,15 @@ export default function LoginPage() {
     setError('')
     const fd = new FormData(e.currentTarget)
     startTransition(async () => {
-      const result = await loginStudent(fd)
-      if (result?.error) setError(result.error)
-      else if (result?.redirectTo) router.push(result.redirectTo)
+      const res = await fetch('/api/auth/login-aluno', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ full_name: fd.get('full_name'), date_of_birth: fd.get('date_of_birth') }),
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (data.error) setError(data.error)
+      else window.location.href = data.redirectTo
     })
   }
 
