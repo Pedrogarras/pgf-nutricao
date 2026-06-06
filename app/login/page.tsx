@@ -1,6 +1,132 @@
 'use client'
 import { useState, useTransition } from 'react'
+import Image from 'next/image'
 import { loginProfessional, loginStudent } from './actions'
+
+/* Polycyclic aromatic ring (benzene/naphthalene honeycomb) SVG background */
+function AromaticRingPattern() {
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ opacity: 0.07 }}
+    >
+      <defs>
+        {/* Single benzene hexagon tile */}
+        <pattern id="hex" x="0" y="0" width="60" height="52" patternUnits="userSpaceOnUse">
+          {/* Hexagon outline */}
+          <polygon
+            points="30,2 56,17 56,47 30,62 4,47 4,17"
+            fill="none"
+            stroke="white"
+            strokeWidth="1.5"
+          />
+          {/* Inner ring (alternating double bonds style) */}
+          <polygon
+            points="30,13 46,22 46,42 30,51 14,42 14,22"
+            fill="none"
+            stroke="white"
+            strokeWidth="0.8"
+            strokeDasharray="8 4"
+          />
+          {/* Centre dot */}
+          <circle cx="30" cy="32" r="2" fill="white" />
+        </pattern>
+        {/* Offset second row for honeycomb tessellation */}
+        <pattern id="hex2" x="30" y="26" width="60" height="52" patternUnits="userSpaceOnUse">
+          <polygon
+            points="30,2 56,17 56,47 30,62 4,47 4,17"
+            fill="none"
+            stroke="white"
+            strokeWidth="1.5"
+          />
+          <polygon
+            points="30,13 46,22 46,42 30,51 14,42 14,22"
+            fill="none"
+            stroke="white"
+            strokeWidth="0.8"
+            strokeDasharray="8 4"
+          />
+          <circle cx="30" cy="32" r="2" fill="white" />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hex)" />
+      <rect width="100%" height="100%" fill="url(#hex2)" />
+    </svg>
+  )
+}
+
+/* Losango (diamond) decorative accents */
+function DiamondAccents() {
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full pointer-events-none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      {/* Large corner diamond — top-left */}
+      <polygon
+        points="0,80 80,0 120,0 0,120"
+        fill="none"
+        stroke="rgba(255,255,255,0.12)"
+        strokeWidth="1"
+      />
+      {/* Diamond ornament top-right */}
+      <g transform="translate(calc(100% - 60px), 40)">
+        <polygon points="0,-28 18,0 0,28 -18,0" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.2" />
+        <polygon points="0,-14 9,0 0,14 -9,0" fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" />
+      </g>
+      {/* Small diamond row — left edge */}
+      <g transform="translate(24, 200)">
+        <polygon points="0,-10 10,0 0,10 -10,0" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+      </g>
+      <g transform="translate(24, 240)">
+        <polygon points="0,-6 6,0 0,6 -6,0" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" />
+      </g>
+      {/* Small diamond row — right edge */}
+      <g transform="translate(calc(100% - 24px), 300)">
+        <polygon points="0,-10 10,0 0,10 -10,0" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
+      </g>
+      <g transform="translate(calc(100% - 24px), 340)">
+        <polygon points="0,-6 6,0 0,6 -6,0" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.15)" strokeWidth="0.8" />
+      </g>
+    </svg>
+  )
+}
+
+/* Pendant — ornamental hanging element at the bottom centre */
+function Pendant() {
+  return (
+    <svg
+      width="60"
+      height="72"
+      viewBox="0 0 60 72"
+      xmlns="http://www.w3.org/2000/svg"
+      className="mx-auto"
+    >
+      {/* Vertical stem */}
+      <line x1="30" y1="0" x2="30" y2="20" stroke="rgba(255,255,255,0.35)" strokeWidth="1" />
+      {/* Outer large diamond */}
+      <polygon
+        points="30,18 50,38 30,58 10,38"
+        fill="none"
+        stroke="rgba(255,255,255,0.35)"
+        strokeWidth="1.2"
+      />
+      {/* Inner diamond */}
+      <polygon
+        points="30,26 42,38 30,50 18,38"
+        fill="rgba(255,255,255,0.08)"
+        stroke="rgba(255,255,255,0.5)"
+        strokeWidth="1"
+      />
+      {/* Centre dot */}
+      <circle cx="30" cy="38" r="3" fill="rgba(255,255,255,0.5)" />
+      {/* Bottom tip line */}
+      <line x1="30" y1="58" x2="30" y2="70" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+      <circle cx="30" cy="70" r="1.5" fill="rgba(255,255,255,0.3)" />
+    </svg>
+  )
+}
 
 export default function LoginPage() {
   const [tab, setTab] = useState<'pro' | 'aluno'>('pro')
@@ -28,17 +154,35 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-pgf-600 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-pgf-600 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Polycyclic aromatic ring background pattern */}
+      <AromaticRingPattern />
+
+      {/* Diamond corner / edge accents */}
+      <DiamondAccents />
+
+      {/* Top horizontal ornamental rule with diamonds */}
+      <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-3 opacity-25">
+        <div className="w-16 h-px bg-white" />
+        <div className="w-2 h-2 rotate-45 border border-white" />
+        <div className="w-1.5 h-1.5 rotate-45 bg-white" />
+        <div className="w-2 h-2 rotate-45 border border-white" />
+        <div className="w-16 h-px bg-white" />
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="text-6xl font-black text-white font-serif italic tracking-tighter leading-none mb-3">
-            PGF
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/logo-pgf-branco.png"
+              alt="PGF Nutricionista"
+              width={220}
+              height={110}
+              className="object-contain"
+              priority
+            />
           </div>
-          <div className="text-xs font-bold text-white/80 tracking-[3px] uppercase">
-            Pedro Garrastazu Frey
-          </div>
-          <div className="text-sm text-white/50 mt-1">Nutricionista</div>
         </div>
 
         {/* Card */}
@@ -148,9 +292,23 @@ export default function LoginPage() {
           </div>
         </div>
 
-        <p className="text-center text-white/40 text-xs mt-6">
+        {/* Pendant ornament */}
+        <div className="mt-6">
+          <Pendant />
+        </div>
+
+        <p className="text-center text-white/40 text-xs mt-4">
           © {new Date().getFullYear()} Pedro Garrastazu Frey · Nutricionista
         </p>
+      </div>
+
+      {/* Bottom horizontal ornamental rule */}
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 opacity-25">
+        <div className="w-16 h-px bg-white" />
+        <div className="w-2 h-2 rotate-45 border border-white" />
+        <div className="w-1.5 h-1.5 rotate-45 bg-white" />
+        <div className="w-2 h-2 rotate-45 border border-white" />
+        <div className="w-16 h-px bg-white" />
       </div>
     </div>
   )
