@@ -29,7 +29,7 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?tipo=aluno')
   return (
-    <div className="dark-theme min-h-screen relative" style={{ backgroundColor: 'var(--dark-bg)' }}>
+    <div className="dark-theme min-h-screen relative" style={{ backgroundColor: '#06060A' }}>
       <AromaticRingBg />
       <div className="relative z-10">
         {children}

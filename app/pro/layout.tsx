@@ -40,7 +40,7 @@ export default async function ProLayout({ children }: { children: React.ReactNod
   if (profile?.role !== 'professional') redirect('/aluno')
 
   return (
-    <div className="dark-theme flex min-h-screen" style={{ backgroundColor: 'var(--dark-bg)' }}>
+    <div className="dark-theme flex min-h-screen" style={{ backgroundColor: '#06060A' }}>
       <AromaticRingBg />
       <Sidebar profile={profile} />
       <main className="flex-1 ml-60 min-h-screen flex flex-col relative z-10">

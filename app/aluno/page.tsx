@@ -68,21 +68,28 @@ export default async function AlunoPage() {
     <div className="max-w-md mx-auto pb-10">
       {/* Header */}
       <div className="px-6 pt-10 pb-20 relative overflow-hidden"
-        style={{ background: 'linear-gradient(160deg, #0D163A 0%, #1E2B6B 60%, #141E4A 100%)' }}>
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg, transparent, rgba(90,111,204,0.7), transparent)' }} />
+        style={{ background: 'linear-gradient(180deg, #06060A 0%, #0C0C18 100%)' }}>
+        {/* Top blue accent line */}
+        <div className="absolute top-0 left-0 right-0 h-px"
+          style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
 
         <div className="flex justify-between items-start mb-2">
           <div>
-            <div className="text-xs font-medium mb-0.5" style={{ color: 'rgba(197,205,240,0.55)' }}>Olá 👋</div>
+            <div className="text-[10px] font-medium tracking-widest uppercase mb-1"
+              style={{ color: 'rgba(255,255,255,0.3)' }}>Bem-vindo</div>
             <div className="text-2xl font-black text-white tracking-tight">{patient.full_name.split(' ')[0]}</div>
-            <div className="text-xs mt-1" style={{ color: 'rgba(197,205,240,0.5)' }}>{patient.goal ?? 'Plano personalizado'}</div>
+            <div className="text-xs mt-1 tracking-wide" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              {patient.goal ?? 'Plano personalizado'}
+            </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-black tracking-[3px] uppercase" style={{ color: 'rgba(197,205,240,0.5)' }}>PGF</div>
-            <div className="text-[10px] mt-0.5" style={{ color: 'rgba(197,205,240,0.3)' }}>Nutricionista</div>
+            <div className="font-serif italic font-black text-white tracking-tighter" style={{ fontSize: '1.5rem' }}>PGF</div>
+            <div className="text-[9px] tracking-[2px] uppercase mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>Nutricionista</div>
             <form action={logout} className="mt-3">
-              <button type="submit" className="text-xs underline" style={{ color: 'rgba(197,205,240,0.35)' }}>Sair</button>
+              <button type="submit" className="text-[10px] tracking-wider uppercase"
+                style={{ color: 'rgba(255,255,255,0.25)' }}>
+                Sair
+              </button>
             </form>
           </div>
         </div>
@@ -119,7 +126,7 @@ export default async function AlunoPage() {
         {/* Diet plan */}
         {dietPlan ? (
           <>
-            <div className="text-sm font-bold mt-2" style={{ color: 'rgba(197,205,240,0.7)' }}>🥗 Plano Alimentar</div>
+            <div className="text-[10px] font-bold tracking-[2px] uppercase mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Plano Alimentar</div>
             {meals.map((meal: {
               id: string; emoji: string; name: string; time_start: string | null; notes: string | null
               meal_foods: { id: string; food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }; quantity_g: number; quantity_description: string | null }[]
@@ -138,7 +145,7 @@ export default async function AlunoPage() {
                 <div key={meal.id} className="rounded-xl overflow-hidden shadow-md"
                   style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
                   {/* Meal header */}
-                  <div className="px-4 py-3.5" style={{ background: 'rgba(30,43,107,0.6)' }}>
+                  <div className="px-4 py-3.5" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(37,99,235,0.15)' }}>
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{meal.emoji}</span>
                       <div className="flex-1">
@@ -222,7 +229,7 @@ export default async function AlunoPage() {
         {/* Workout plan */}
         {workoutPlan && days.length > 0 && (
           <>
-            <div className="text-sm font-bold mt-4" style={{ color: 'rgba(197,205,240,0.7)' }}>💪 Treino</div>
+            <div className="text-[10px] font-bold tracking-[2px] uppercase mt-4" style={{ color: 'rgba(255,255,255,0.35)' }}>Treino</div>
             {days.map((day: { id: string; name: string; workout_exercises: { id: string; exercise: { name: string; muscle_group: string | null; video_url: string | null }; sets: number | null; reps: string | null; rest_seconds: number | null; notes: string | null }[] }) => (
               <div key={day.id} className="rounded-xl overflow-hidden shadow-md"
                 style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>

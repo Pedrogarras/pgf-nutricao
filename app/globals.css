@@ -7,18 +7,20 @@
   --pgf-blue-light: #3D52B0;
   --pgf-blue-pale: #EEF1FB;
 
-  /* Dark theme tokens */
-  --dark-bg:      #09152A;
-  --dark-surface: #0F1E3A;
-  --dark-card:    #132244;
-  --dark-card-2:  #182B55;
-  --dark-border:  rgba(255, 255, 255, 0.08);
-  --dark-border2: rgba(255, 255, 255, 0.13);
-  --dark-text:    #E2E8F8;
-  --dark-muted:   rgba(226, 232, 248, 0.55);
-  --dark-faint:   rgba(226, 232, 248, 0.30);
-  --dark-hover:   rgba(255, 255, 255, 0.05);
-  --dark-active:  rgba(90, 111, 204, 0.25);
+  /* Dark theme tokens — noble black with vibrant navy blue */
+  --dark-bg:      #06060A;
+  --dark-surface: #0C0C14;
+  --dark-card:    #101018;
+  --dark-card-2:  #15151F;
+  --dark-border:  rgba(29, 78, 216, 0.18);
+  --dark-border2: rgba(37, 99, 235, 0.30);
+  --dark-text:    #FFFFFF;
+  --dark-muted:   rgba(255, 255, 255, 0.58);
+  --dark-faint:   rgba(255, 255, 255, 0.28);
+  --dark-hover:   rgba(255, 255, 255, 0.04);
+  --dark-active:  rgba(37, 99, 235, 0.14);
+  --dark-accent:  #2563EB;
+  --dark-accent2: #1D4ED8;
 }
 
 @layer base {
@@ -139,7 +141,7 @@
 .dark-theme .form-input:focus,
 .dark-theme .form-select:focus,
 .dark-theme .form-textarea:focus {
-  border-color: #5A6FCC !important;
+  border-color: #2563EB !important;
   box-shadow: 0 0 0 2px rgba(90,111,204,0.25) !important;
 }
 
@@ -172,7 +174,7 @@
 /* Tabs */
 .dark-theme .tab { color: var(--dark-muted) !important; }
 .dark-theme .tab:hover { color: var(--dark-text) !important; }
-.dark-theme .tab.active { color: #9BAAE6 !important; border-color: #5A6FCC !important; }
+.dark-theme .tab.active { color: #9BAAE6 !important; border-color: #2563EB !important; }
 
 /* ── Global element overrides in dark-theme ── */
 
@@ -254,21 +256,35 @@
   color: var(--dark-faint) !important;
 }
 
-/* pgf-100 avatar backgrounds */
+/* pgf / blue accent overrides */
 .dark-theme [class*="bg-pgf-100"] {
-  background: rgba(90,111,204,0.2) !important;
+  background: rgba(37,99,235,0.15) !important;
+}
+.dark-theme [class*="bg-pgf-50"] {
+  background-color: rgba(37,99,235,0.07) !important;
 }
 .dark-theme [class*="text-pgf-600"] {
-  color: #9BAAE6 !important;
+  color: #60A5FA !important;
 }
 .dark-theme [class*="text-pgf-500"] {
-  color: #9BAAE6 !important;
+  color: #60A5FA !important;
 }
 .dark-theme [class*="text-pgf-700"] {
-  color: #C5CDF0 !important;
+  color: #93C5FD !important;
 }
-.dark-theme [class*="border-pgf-100"] {
-  border-color: rgba(90,111,204,0.25) !important;
+.dark-theme [class*="text-pgf-400"] {
+  color: #93C5FD !important;
+}
+.dark-theme [class*="border-pgf-100"],
+.dark-theme [class*="border-pgf-200"] {
+  border-color: rgba(37,99,235,0.22) !important;
+}
+.dark-theme [class*="bg-pgf-600"] {
+  background: #1D4ED8 !important;
+}
+.dark-theme [class*="hover:bg-pgf-50"]:hover,
+.dark-theme [class*="hover:bg-pgf-50"] {
+  background: rgba(37,99,235,0.09) !important;
 }
 
 /* Print styles — PDF gerado via CSS */
