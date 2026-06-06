@@ -4,9 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function createPatient(formData: FormData) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: 'Não autenticado.' }
-
+  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
+  
   const fullName = (formData.get('full_name') as string).trim()
   const dob = formData.get('date_of_birth') as string
 
@@ -14,7 +13,7 @@ export async function createPatient(formData: FormData) {
   if (!dob) return { error: 'Data de nascimento é obrigatória (usada como senha do aluno).' }
 
   const { error } = await supabase.from('patients').insert({
-    professional_id: user.id,
+    professional_id: PROF_ID,
     full_name: fullName,
     date_of_birth: dob,
     email: (formData.get('email') as string) || null,

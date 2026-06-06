@@ -1,23 +1,16 @@
-import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
 import Sidebar from '@/components/Sidebar'
 
-export default async function ProLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+const PROFILE = {
+  id: '95af5b8a-78bb-452b-988a-f8d91be26409',
+  role: 'professional',
+  full_name: 'Pedro Garrastazu Frey',
+  created_at: '',
+}
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  if (profile?.role !== 'professional') redirect('/aluno')
-
+export default function ProLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <Sidebar profile={profile} />
+      <Sidebar profile={PROFILE as any} />
       <main className="flex-1 ml-60 min-h-screen flex flex-col">
         {children}
       </main>

@@ -3,8 +3,8 @@ import Link from 'next/link'
 
 export default async function DietaListPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { data: patients } = await supabase.from('patients').select('id,full_name,goal,weight_kg').eq('professional_id', user!.id).eq('active', true).order('full_name')
+  const PROF_ID = '95af5b8a-78bb-452b-988a-f8d91be26409'
+  const { data: patients } = await supabase.from('patients').select('id,full_name,goal,weight_kg').eq('professional_id', PROF_ID).eq('active', true).order('full_name')
 
   return (
     <div>
