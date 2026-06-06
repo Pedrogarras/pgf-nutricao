@@ -120,31 +120,77 @@ export default async function AlunoPage() {
         {dietPlan ? (
           <>
             <div className="text-sm font-bold mt-2" style={{ color: 'rgba(197,205,240,0.7)' }}>🥗 Plano Alimentar</div>
-            {meals.map((meal: { id: string; emoji: string; name: string; time_start: string | null; meal_foods: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }[] }) => {
-              const mealKcal = r(meal.meal_foods?.reduce((acc: number, mf: { quantity_g: number; food: { kcal: number; portion_g: number } }) => acc + mf.food.kcal * (mf.quantity_g / (mf.food.portion_g || 100)), 0) ?? 0)
+            {meals.map((meal: {
+              id: string; emoji: string; name: string; time_start: string | null; notes: string | null
+              meal_foods: { id: string; food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }; quantity_g: number; quantity_description: string | null }[]
+            }) => {
+              const mealMacros = meal.meal_foods?.reduce((acc, mf) => {
+                const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+                return {
+                  kcal: acc.kcal + mf.food.kcal * ratio,
+                  protein: acc.protein + mf.food.protein_g * ratio,
+                  carbs: acc.carbs + mf.food.carbs_g * ratio,
+                  fat: acc.fat + mf.food.fat_g * ratio,
+                }
+              }, { kcal: 0, protein: 0, carbs: 0, fat: 0 }) ?? { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+
               return (
                 <div key={meal.id} className="rounded-xl overflow-hidden shadow-md"
                   style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <span className="text-xl">{meal.emoji}</span>
-                    <div className="flex-1">
-                      <div className="font-bold text-sm text-white">{meal.name}</div>
-                      <div className="text-xs" style={{ color: 'rgba(197,205,240,0.45)' }}>
-                        {meal.time_start ?? ''} · {mealKcal} kcal
+                  {/* Meal header */}
+                  <div className="px-4 py-3.5" style={{ background: 'rgba(30,43,107,0.6)' }}>
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{meal.emoji}</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm text-white">{meal.name}</div>
+                        {meal.time_start && (
+                          <div className="text-xs mt-0.5" style={{ color: 'rgba(197,205,240,0.5)' }}>{meal.time_start}</div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-base font-black text-white">{r(mealMacros.kcal)}</div>
+                        <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.4)' }}>kcal</div>
                       </div>
                     </div>
+                    {/* Macro mini bar */}
+                    {meal.meal_foods?.length > 0 && (
+                      <div className="flex gap-3 mt-2.5 text-xs">
+                        <span style={{ color: '#93C5FD' }}>P {r(mealMacros.protein)}g</span>
+                        <span style={{ color: '#FCD34D' }}>C {r(mealMacros.carbs)}g</span>
+                        <span style={{ color: '#FCA5A5' }}>G {r(mealMacros.fat)}g</span>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Food list */}
                   {meal.meal_foods?.length > 0 && (
                     <div style={{ borderTop: '1px solid var(--dark-border)' }}>
-                      {meal.meal_foods.map((mf: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }) => (
-                        <div key={mf.id} className="flex justify-between px-4 py-2 text-sm"
+                      {meal.meal_foods.map((mf) => (
+                        <div key={mf.id} className="flex items-center justify-between px-4 py-2.5"
                           style={{ borderBottom: '1px solid var(--dark-border)' }}>
-                          <span className="font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>{mf.food.name}</span>
-                          <span className="text-xs" style={{ color: 'rgba(197,205,240,0.45)' }}>
+                          <span className="text-sm font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>
+                            {mf.food.name}
+                          </span>
+                          <span className="text-xs ml-3 text-right flex-shrink-0" style={{ color: 'rgba(197,205,240,0.55)' }}>
                             {mf.quantity_description ?? `${mf.quantity_g}g`}
                           </span>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Orientações da refeição */}
+                  {meal.notes && (
+                    <div className="px-4 py-3" style={{ background: 'rgba(90,111,204,0.08)', borderTop: '1px solid rgba(90,111,204,0.2)' }}>
+                      <div className="flex items-center gap-1.5 mb-1.5">
+                        <span>📋</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9BAAE6' }}>
+                          Orientações
+                        </span>
+                      </div>
+                      <div className="text-xs leading-relaxed whitespace-pre-line" style={{ color: 'rgba(226,232,248,0.65)' }}>
+                        {meal.notes}
+                      </div>
                     </div>
                   )}
                 </div>

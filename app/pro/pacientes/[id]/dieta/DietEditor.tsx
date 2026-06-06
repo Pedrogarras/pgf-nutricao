@@ -4,12 +4,12 @@ import Link from 'next/link'
 import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
-  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate
+  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal
 } from './actions'
 
 // ===================== TIPOS =====================
 interface FoodMeasure { id: string; description: string; grams: number }
-interface LocalFood extends Food { source_label?: string }
+interface LocalFood extends Food { }
 interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number }
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
 interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
@@ -46,7 +46,7 @@ function computeDesc(qty: number, food: LocalFood): string {
   return `${qty}g`
 }
 
-function sourceBadge(source?: string, label?: string) {
+function sourceBadge(source?: string | null, label?: string | null) {
   const text = label || source || ''
   if (!text || text === 'custom') return null
   const color = text === 'TACO' ? 'bg-emerald-100 text-emerald-700' : text === 'IBGE' ? 'bg-blue-100 text-blue-700' : text === 'USDA' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'
@@ -360,22 +360,138 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
   )
 }
 
+// ===================== EDIT FOOD MODAL =====================
+function EditFoodModal({ mf, onClose, onSaved }: {
+  mf: LocalMealFood
+  onClose: () => void
+  onSaved: (updatedMf: LocalMealFood) => void
+}) {
+  const [quantity, setQuantity] = useState(String(mf.quantity_g))
+  const [description, setDescription] = useState(mf.quantity_description || `${mf.quantity_g}g`)
+  const [loading, setLoading] = useState(false)
+
+  const qty = parseFloat(quantity) || 0
+  const macros = (() => {
+    const m = calcMacros(qty, mf.food)
+    return { kcal: r(m.kcal), protein: r(m.protein), carbs: r(m.carbs), fat: r(m.fat) }
+  })()
+
+  function handleMeasureSelect(grams: number, desc: string) {
+    setQuantity(String(grams))
+    setDescription(desc)
+  }
+
+  async function handleSave() {
+    if (!quantity || qty <= 0) return
+    setLoading(true)
+    await updateMealFood(mf.id, qty, description || `${qty}g`)
+    onSaved({ ...mf, quantity_g: qty, quantity_description: description || `${qty}g` })
+    setLoading(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <h3 className="font-bold text-gray-900">Editar quantidade</h3>
+            <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              {mf.food.name}{sourceBadge(mf.food.source, mf.food.source_label)}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Referência base */}
+          <div className="p-3 bg-pgf-50 rounded-lg border border-pgf-100">
+            <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Referência base do alimento</div>
+            <div className="text-sm font-semibold text-pgf-700">
+              {mf.food.portion_g}g = {mf.food.portion_description ?? `${mf.food.portion_g}g`}
+            </div>
+            <div className="text-xs text-gray-400 mt-0.5">
+              {r(mf.food.kcal)} kcal · P {r(mf.food.protein_g)}g · C {r(mf.food.carbs_g)}g · G {r(mf.food.fat_g)}g
+            </div>
+          </div>
+
+          {/* Medida caseira dropdown */}
+          <MeasureSelect foodId={mf.food_id} onMeasureSelect={handleMeasureSelect} />
+
+          {/* Inputs de quantidade e descrição */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Gramatura (g)</label>
+              <input
+                type="number" step="0.5" min="0.5" value={quantity}
+                onChange={e => {
+                  setQuantity(e.target.value)
+                  const q = parseFloat(e.target.value)
+                  if (!isNaN(q) && q > 0) setDescription(computeDesc(q, mf.food))
+                }}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Medida caseira</label>
+              <input
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="form-input"
+                placeholder="ex: 1.5 fatia (75g)"
+              />
+            </div>
+          </div>
+
+          <p className="text-[11px] text-gray-400">
+            💡 Selecione uma medida caseira para preencher os campos automaticamente, ou digite a gramatura para calcular a descrição proporcional.
+          </p>
+
+          {/* Preview macros */}
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: 'Kcal', value: macros.kcal, color: 'text-gray-900' },
+              { label: 'Prot', value: `${macros.protein}g`, color: 'text-blue-600' },
+              { label: 'Carb', value: `${macros.carbs}g`, color: 'text-amber-600' },
+              { label: 'Gord', value: `${macros.fat}g`, color: 'text-red-600' },
+            ].map(m => (
+              <div key={m.label} className="bg-gray-50 rounded-lg p-2">
+                <div className={`text-base font-black ${m.color}`}>{m.value}</div>
+                <div className="text-[10px] text-gray-400">{m.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 px-5 pb-5">
+          <button onClick={onClose} className="btn btn-ghost">Cancelar</button>
+          <button onClick={handleSave} disabled={!quantity || qty <= 0 || loading} className="btn btn-primary">
+            {loading ? 'Salvando...' : '✓ Salvar alteração'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===================== MEAL FOOD ROW =====================
-function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved }: {
+function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onFullUpdate }: {
   mf: LocalMealFood
   onQtyChange: (id: string, qty: number) => void
   onRemove: (id: string) => void
   onSubAdded: (mfId: string, sub: LocalSubstitute) => void
   onSubRemoved: (mfId: string, subId: string) => void
+  onFullUpdate: (updatedMf: LocalMealFood) => void
 }) {
   const [addSubOpen, setAddSubOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const m = calcMacros(mf.quantity_g, mf.food)
 
   return (
     <>
       {/* Main food row */}
       <div className="grid items-center py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
-        style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 72px' }}>
+        style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
         <div>
           <div className="flex items-center gap-1">
             <span className="text-sm font-semibold text-gray-800">{mf.food.name}</span>
@@ -393,6 +509,11 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved }: {
         <span className="text-center text-sm font-semibold text-red-500">{r(m.fat)}g</span>
         <span className="text-center text-sm font-bold text-gray-700">{r(m.kcal)}</span>
         <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => setEditOpen(true)}
+            title="Editar quantidade/medida"
+            className="text-gray-300 hover:text-pgf-500 transition-colors text-sm px-1"
+          >✏️</button>
           <button onClick={() => setAddSubOpen(true)}
             title="Adicionar substituto"
             className="text-pgf-400 hover:text-pgf-600 text-xs px-1.5 py-0.5 rounded border border-pgf-200 hover:bg-pgf-50 transition-colors">
@@ -407,7 +528,7 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved }: {
         const sm = calcMacros(sub.quantity_g, sub.food)
         return (
           <div key={sub.id} className="grid items-center py-1.5 pl-4 border-b border-gray-50/80 bg-gray-50/30"
-            style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 72px' }}>
+            style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
             <div className="flex items-center gap-1">
               <span className="text-[10px] font-bold text-amber-500 mr-1">OU</span>
               <span className="text-xs text-gray-600">{sub.food.name}</span>
@@ -434,6 +555,14 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved }: {
           onAdded={sub => { onSubAdded(mf.id, sub); setAddSubOpen(false) }}
         />
       )}
+
+      {editOpen && (
+        <EditFoodModal
+          mf={mf}
+          onClose={() => setEditOpen(false)}
+          onSaved={updatedMf => { onFullUpdate(updatedMf); setEditOpen(false) }}
+        />
+      )}
     </>
   )
 }
@@ -446,6 +575,8 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [mealNotes, setMealNotes] = useState(meal.notes ?? '')
+  const [notesDirty, setNotesDirty] = useState(false)
   const total = mealTotal(meal)
 
   function handleFoodAdded(mf: LocalMealFood) {
@@ -490,6 +621,32 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
     await updateMealFood(mfId, qty, newDesc)
   }
 
+  // Chamado pelo EditFoodModal — atualiza a refeição completa (alimento + substitutos recalculados)
+  async function handleFullUpdate(updatedMf: LocalMealFood) {
+    const prevMf = meal.meal_foods.find(m => m.id === updatedMf.id)
+    if (!prevMf) return
+
+    const targetKcal = calcMacros(updatedMf.quantity_g, updatedMf.food).kcal
+    const updatedSubs = (prevMf.substitutes ?? []).map(sub => {
+      const newQty = sub.food.kcal > 0
+        ? Math.round((targetKcal / sub.food.kcal) * (sub.food.portion_g || 100))
+        : sub.quantity_g
+      return { ...sub, quantity_g: newQty, quantity_description: computeDesc(newQty, sub.food) }
+    })
+
+    const newMf = { ...updatedMf, substitutes: updatedSubs }
+    onUpdate({ ...meal, meal_foods: meal.meal_foods.map(m => m.id === newMf.id ? newMf : m) })
+
+    // Persiste substitutos atualizados em background
+    for (const sub of updatedSubs) {
+      await fetch('/api/substitutes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: sub.id, quantity_g: sub.quantity_g, quantity_description: sub.quantity_description })
+      })
+    }
+  }
+
   function handleSubAdded(mfId: string, sub: LocalSubstitute) {
     onUpdate({
       ...meal,
@@ -512,6 +669,12 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
     if (!confirm(`Remover refeição "${meal.name}"?`)) return
     await removeMeal(meal.id)
     onRemoveMeal(meal.id)
+  }
+
+  async function handleNotesSave() {
+    if (!notesDirty) return
+    await updateMeal(meal.id, { notes: mealNotes })
+    setNotesDirty(false)
   }
 
   return (
@@ -544,7 +707,7 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
         <div className="px-5 pb-4">
           {meal.meal_foods.length > 0 && (
             <div className="grid text-[10px] font-semibold text-gray-400 uppercase tracking-wide py-2 border-b border-gray-100"
-              style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 72px' }}>
+              style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
               <span>Alimento</span>
               <span className="text-center">Qtd (g)</span>
               <span className="text-center text-blue-500">Prot</span>
@@ -563,8 +726,31 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
               onRemove={handleRemoveFood}
               onSubAdded={handleSubAdded}
               onSubRemoved={handleSubRemoved}
+              onFullUpdate={handleFullUpdate}
             />
           ))}
+
+          {/* Orientações da refeição */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <label className="flex items-center gap-1.5 form-label mb-1.5">
+              <span>📋</span>
+              <span>Orientações da refeição</span>
+              {notesDirty && (
+                <span className="text-[10px] font-normal normal-case tracking-normal text-amber-500 ml-1">
+                  • não salvo
+                </span>
+              )}
+            </label>
+            <textarea
+              value={mealNotes}
+              onChange={e => { setMealNotes(e.target.value); setNotesDirty(true) }}
+              onBlur={handleNotesSave}
+              rows={3}
+              className="form-textarea text-xs w-full resize-y"
+              placeholder="Orientações para esta refeição: substituições permitidas, dicas de preparo, alimentos livres, horário flexível..."
+            />
+            <div className="text-[10px] text-gray-400 mt-1">Salvo automaticamente ao sair do campo.</div>
+          </div>
 
           <button
             onClick={() => setAddOpen(true)}
@@ -1186,6 +1372,16 @@ function PdfPreview({ patient, plan, meals, totals }: {
                       </div>
                     )
                   })}
+
+                  {/* Orientações por refeição */}
+                  {meal.notes && (
+                    <div className="px-3 py-2.5 border-t border-pgf-100 bg-pgf-50/60">
+                      <div className="text-[9px] font-bold text-pgf-600 uppercase tracking-wider mb-1">
+                        📋 Orientações
+                      </div>
+                      <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-line">{meal.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )

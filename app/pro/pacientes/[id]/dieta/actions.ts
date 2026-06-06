@@ -93,29 +93,58 @@ export async function removeSubstitute(substituteId: string) {
   await supabase.from('meal_food_substitutes').delete().eq('id', substituteId)
 }
 
+export async function updateMeal(mealId: string, data: { name?: string; time_start?: string; emoji?: string; notes?: string }) {
+  const supabase = await createClient()
+  await supabase.from('meals').update(data).eq('id', mealId)
+}
+
 // ─── TEMPLATES ────────────────────────────────────────────────────────────────
 
-type TemplateMeal = { name: string; time_start: string; emoji: string; foods: { search: string; grams: number }[] }
+type TemplateMeal = {
+  name: string; time_start: string; emoji: string; notes: string
+  foods: { search: string; grams: number }[]
+}
 type TemplateId = 'feminino' | 'masculino'
+
+const CAFE_NOTES =
+  'Fruta é opcional — recomendada para vitaminas e saciedade (melancia, morango e melão em maior quantidade). ' +
+  'Leite do café, se desnatado, não precisa ser quantificado. ' +
+  'Para o ovo, use os substitutos por praticidade: queijo muçarela, requeijão, cottage. ' +
+  'Com iogurte natural + fruta + doce de leite você pode montar um bowl doce com bastante volume e saciedade.'
+
+const ALMOCO_NOTES =
+  'Em casa sempre pese os alimentos — as medidas caseiras são referência para fora de casa. ' +
+  'Salada e legumes (tomate, alface, abobrinha, brócolis, etc.) à vontade. ' +
+  'Para temperar: máx. 1 col. chá de óleo; vinagre, limão, mostarda, ketchup e ervas à vontade. ' +
+  'Molho de tomate à vontade (pese o macarrão separado). Queijo ralado: máx. 20 g como adicional. ' +
+  'Atum: sempre em filé/pedaço inteiro, escorra bem o óleo.'
+
+const LANCHE_NOTES =
+  'Se ater sempre à gramagem e não à medida caseira.'
+
+const JANTAR_NOTES =
+  'Mesmo porcionamento de proteína do almoço — as opções de lá servem aqui e vice-versa. ' +
+  'Molho de tomate à vontade. Para sopas: pese a carne e o carboidrato; caldo e legumes livres. ' +
+  'Sanduíche de atum ou sardinha é uma boa opção prática: 2 latas + 2 pães + 1 tomate e está feita a refeição.'
 
 const DIET_TEMPLATES: Record<TemplateId, { kcal_goal: number; meals: TemplateMeal[] }> = {
   feminino: {
     kcal_goal: 1300,
     meals: [
-      { name: 'Café da manhã', time_start: '06:00', emoji: '☀️', foods: [
+      { name: 'Café da manhã', time_start: '06:00', emoji: '☀️', notes: CAFE_NOTES, foods: [
         { search: 'pão de forma integral', grams: 50 },
         { search: 'ovo de galinha', grams: 90 },
         { search: 'manteiga', grams: 8 },
         { search: 'banana prata', grams: 65 },
       ]},
-      { name: 'Almoço', time_start: '12:00', emoji: '🍽️', foods: [
+      { name: 'Almoço', time_start: '12:00', emoji: '🍽️', notes: ALMOCO_NOTES, foods: [
         { search: 'batata inglesa', grams: 150 },
         { search: 'peito de frango', grams: 151 },
       ]},
-      { name: 'Lanche da tarde', time_start: '15:30', emoji: '🍪', foods: [
+      { name: 'Lanche da tarde', time_start: '15:30', emoji: '🍪', notes: LANCHE_NOTES, foods: [
         { search: 'bolo com gotas de chocolate', grams: 80 },
       ]},
-      { name: 'Jantar', time_start: '19:00', emoji: '🌙', foods: [
+      { name: 'Jantar', time_start: '19:00', emoji: '🌙', notes: JANTAR_NOTES, foods: [
         { search: 'batata inglesa', grams: 150 },
         { search: 'peito de frango', grams: 150 },
       ]},
@@ -124,19 +153,19 @@ const DIET_TEMPLATES: Record<TemplateId, { kcal_goal: number; meals: TemplateMea
   masculino: {
     kcal_goal: 1800,
     meals: [
-      { name: 'Café da manhã', time_start: '06:00', emoji: '☀️', foods: [
+      { name: 'Café da manhã', time_start: '06:00', emoji: '☀️', notes: CAFE_NOTES, foods: [
         { search: 'pão de forma integral', grams: 50 },
         { search: 'ovo de galinha', grams: 90 },
         { search: 'banana prata', grams: 65 },
       ]},
-      { name: 'Almoço', time_start: '12:00', emoji: '🍽️', foods: [
+      { name: 'Almoço', time_start: '12:00', emoji: '🍽️', notes: ALMOCO_NOTES, foods: [
         { search: 'batata inglesa', grams: 400 },
         { search: 'peito de frango', grams: 201 },
       ]},
-      { name: 'Lanche da tarde', time_start: '15:30', emoji: '🍪', foods: [
+      { name: 'Lanche da tarde', time_start: '15:30', emoji: '🍪', notes: LANCHE_NOTES, foods: [
         { search: 'bolo com gotas de chocolate', grams: 80 },
       ]},
-      { name: 'Jantar', time_start: '19:00', emoji: '🌙', foods: [
+      { name: 'Jantar', time_start: '19:00', emoji: '🌙', notes: JANTAR_NOTES, foods: [
         { search: 'batata inglesa', grams: 400 },
         { search: 'peito de frango', grams: 200 },
       ]},
@@ -168,7 +197,7 @@ export async function applyTemplate(planId: string, template: TemplateId) {
 
     const { data: meal, error: mealErr } = await supabase
       .from('meals')
-      .insert({ diet_plan_id: planId, name: mealDef.name, time_start: mealDef.time_start, emoji: mealDef.emoji, sort_order: i + 1 })
+      .insert({ diet_plan_id: planId, name: mealDef.name, time_start: mealDef.time_start, emoji: mealDef.emoji, notes: mealDef.notes ?? null, sort_order: i + 1 })
       .select()
       .single()
 
