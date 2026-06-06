@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PGF — Plataforma Nutricional</title>
+  <style>
+    /* ===== TOKENS ===== */
+    :root {
+      --blue:       #2B3A8E;
+      --blue-light: #3D52B0;
+      --blue-pale:  #EEF1FB;
+      --blue-mid:   #C5CDF0;
+      --text:       #1A1F3C;
+      --muted:      #6B7280;
+      --border:     #E2E5F0;
+      --bg:         #F7F8FC;
+      --white:      #FFFFFF;
+      --green:      #22C55E;
+      --orange:     #F97316;
+      --red:        #EF4444;
+      --radius:     12px;
+      --shadow:     0 2px 12px rgba(43,58,142,.10);
+      --shadow-lg:  0 8px 32px rgba(43,58,142,.14);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 240px;
+      background: var(--blue);
+      display: flex; flex-direction: column;
+      z-index: 100;
+      box-shadow: 4px 0 24px rgba(43,58,142,.18);
+    }
+
+    .sidebar-logo {
+      padding: 28px 24px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      text-align: center;
+    }
+
+    .pgf-monogram {
+      font-size: 42px;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -2px;
+      font-family: Georgia, serif;
+      line-height: 1;
+      margin-bottom: 6px;
+      font-style: italic;
+    }
+
+    .pgf-name {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,.85);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .pgf-title {
+      font-size: 11px;
+      color: rgba(255,255,255,.55);
+      margin-top: 2px;
+    }
+
+    .nav {
+      flex: 1;
+      padding: 16px 12px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.4);
+      padding: 12px 12px 4px;
+    }
+
+    .nav-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: rgba(255,255,255,.7);
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .15s;
+      text-decoration: none;
+    }
+
+    .nav-item:hover { background: rgba(255,255,255,.1); color: var(--white); }
+    .nav-item.active { background: rgba(255,255,255,.18); color: var(--white); font-weight: 600; }
+
+    .nav-icon { width: 18px; text-align: center; font-size: 16px; }
+
+    .sidebar-footer {
+      padding: 16px;
+      border-top: 1px solid rgba(255,255,255,.12);
+    }
+
+    .user-chip {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border-radius: 8px;
+      background: rgba(255,255,255,.08);
+    }
+
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,.25);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--white);
+    }
+
+    .user-info { flex: 1; overflow: hidden; }
+    .user-name { font-size: 12px; font-weight: 600; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 10px; color: rgba(255,255,255,.5); }
+
+    /* ===== MAIN ===== */
+    .main {
+      margin-left: 240px;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ===== TOPBAR ===== */
+    .topbar {
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 50;
+    }
+
+    .topbar-title { font-size: 18px; font-weight: 700; color: var(--text); }
+    .topbar-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ===== BUTTONS ===== */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; transition: all .15s;
+      text-decoration: none;
+    }
+
+    .btn-primary { background: var(--blue); color: var(--white); }
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-outline { background: transparent; color: var(--blue); border: 1.5px solid var(--blue-mid); }
+    .btn-outline:hover { background: var(--blue-pale); }
+    .btn-ghost { background: transparent; color: var(--muted); border: 1.5px solid var(--border); }
+    .btn-ghost:hover { background: var(--bg); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-icon { padding: 8px; }
+
+    /* ===== PAGE ===== */
+    .page { display: none; padding: 28px 32px; flex: 1; }
+    .page.active { display: block; }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: var(--white);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+
+    .card-title { font-size: 15px; font-weight: 700; color: var(--text); }
+    .card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .card-body { padding: 20px 22px; }
+
+    /* ===== GRID ===== */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; }
+
+    /* ===== STAT CARDS ===== */
+    .stat-card {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-label { font-size: 12px; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .8px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--text); margin: 4px 0 2px; }
+    .stat-unit { font-size: 12px; color: var(--muted); }
+    .stat-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 11px; font-weight: 600;
+      padding: 2px 8px; border-radius: 20px; margin-top: 6px;
+    }
+    .badge-green { background: #DCFCE7; color: #16A34A; }
+    .badge-orange { background: #FFF7ED; color: #EA580C; }
+    .badge-blue { background: var(--blue-pale); color: var(--blue); }
+    .badge-red { background: #FEF2F2; color: #DC2626; }
+
+    /* ===== TABLE ===== */
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: .8px;
+      padding: 10px 16px; background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 13px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--blue-pale); }
+
+    .patient-name { font-weight: 600; color: var(--text); }
+    .patient-meta { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ===== TAGS ===== */
+    .tag {
+      display: inline-flex; align-items: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+    }
+
+    /* ===== FORM ===== */
+    .form-group { margin-bottom: 18px; }
+    .form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .form-hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%; padding: 9px 13px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 14px; color: var(--text);
+      background: var(--white); outline: none;
+      transition: border-color .15s;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(43,58,142,.08);
+    }
+
+    .form-textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; gap: 14px; }
+    .form-row-2 { grid-template-columns: 1fr 1fr; }
+    .form-row-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .form-row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+
+    /* ===== TABS ===== */
+    .tabs { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+    .tab {
+      padding: 10px 18px; font-size: 14px; font-weight: 500;
+      cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent;
+      margin-bottom: -2px; transition: all .15s;
+    }
+    .tab:hover { color: var(--blue); }
+    .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 700; }
+
+    /* ===== MEAL BLOCK ===== */
+    .meal-block {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color .15s;
+    }
+    .meal-block:hover { border-color: var(--blue-mid); }
+
+    .meal-header {
+      padding: 14px 18px;
+      background: var(--blue-pale);
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer;
+    }
+
+    .meal-title-row { display: flex; align-items: center; gap: 10px; }
+    .meal-emoji { font-size: 20px; }
+    .meal-name { font-size: 15px; font-weight: 700; color: var(--blue); }
+    .meal-time { font-size: 12px; color: var(--muted); }
+    .meal-kcal { font-size: 13px; font-weight: 700; color: var(--blue); }
+
+    .meal-body { padding: 0 18px 14px; }
+
+    .food-row {
+      display: grid;
+      grid-template-columns: 2fr 80px 60px 60px 60px 60px 40px;
+      gap: 8px;
+      align-items: center;
+      padding: 9px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .food-row:last-child { border-bottom: none; }
+    .food-row-header {
+      font-size: 10px; font-weight: 600; color: var(--muted);
+      text-transform: uppercase; letter-spacing: .8px;
+      padding: 10px 0 6px;
+    }
+    .food-name { font-weight: 500; }
+    .food-macro { text-align: center; color: var(--muted); }
+    .macro-prot { color: #2563EB; font-weight: 600; }
+    .macro-carb { color: #D97706; font-weight: 600; }
+    .macro-fat  { color: #DC2626; font-weight: 600; }
+    .macro-kcal { color: var(--text); font-weight: 700; }
+
+    .add-food-btn {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 10px; margin-top: 8px;
+      border: 1.5px dashed var(--blue-mid);
+      border-radius: 8px; cursor: pointer;
+      font-size: 12px; color: var(--blue);
+      background: transparent; width: 100%;
+      transition: all .15s;
+    }
+    .add-food-btn:hover { background: var(--blue-pale); border-color: var(--blue); }
+
+    /* ===== MACRO SUMMARY ===== */
+    .macro-summary {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 12px; margin-bottom: 24px;
+    }
+    .macro-box {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      text-align: center;
+    }
+    .macro-box-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .macro-box-value { font-size: 24px; font-weight: 800; margin: 4px 0 2px; }
+    .macro-box-unit { font-size: 11px; color: var(--muted); }
+    .macro-box-bar { height: 4px; border-radius: 4px; margin-top: 8px; }
+
+    /* ===== PROGRESS BAR ===== */
+    .progress-wrap { background: var(--border); border-radius: 4px; height: 6px; margin-top: 6px; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width .3s; }
+
+    /* ===== AVATAR ROW ===== */
+    .avatar-lg {
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--blue-pale);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 700; color: var(--blue);
+      flex-shrink: 0;
+    }
+
+    /* ===== MODAL ===== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      z-index: 1000;
+      display: none; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--white);
+      border-radius: 16px;
+      width: 560px; max-width: 95vw;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-size: 17px; font-weight: 700; }
+    .modal-close { cursor: pointer; font-size: 20px; color: var(--muted); background: none; border: none; }
+    .modal-body { padding: 22px 24px; }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; justify-content: flex-end; gap: 10px;
+    }
+
+    /* ===== SEARCH ===== */
+    .search-wrap { position: relative; }
+    .search-wrap .search-icon {
+      position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); pointer-events: none;
+    }
+    .search-input {
+      padding-left: 36px !important;
+    }
+
+    /* ===== PDF PREVIEW ===== */
+    .pdf-preview {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      overflow: hidden; box-shadow: var(--shadow-lg);
+      font-family: Georgia, serif;
+    }
+    .pdf-header {
+      background: var(--blue);
+      padding: 28px 36px;
+      display: flex; align-items: center; gap: 20px;
+    }
+    .pdf-logo-text { color: white; }
+    .pdf-logo-mono { font-size: 36px; font-weight: 900; font-style: italic; letter-spacing: -2px; line-height: 1; }
+    .pdf-logo-name { font-size: 12px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; margin-top: 4px; opacity: .9; }
+    .pdf-logo-role { font-size: 11px; opacity: .6; margin-top: 1px; }
+    .pdf-divider { flex: 1; }
+    .pdf-patient-info { color: white; text-align: right; font-size: 12px; opacity: .85; }
+    .pdf-patient-name { font-size: 16px; font-weight: 700; opacity: 1; margin-bottom: 4px; }
+    .pdf-body { padding: 24px 36px; background: white; }
+    .pdf-section-title {
+      font-size: 13px; font-weight: 700; color: var(--blue);
+      text-transform: uppercase; letter-spacing: 1px;
+      border-bottom: 2px solid var(--blue);
+      padding-bottom: 6px; margin: 20px 0 14px;
+    }
+    .pdf-macro-row {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 10px; margin-bottom: 16px;
+    }
+    .pdf-macro-box {
+      border: 1px solid var(--border); border-radius: 8px; padding: 10px; text-align: center;
+    }
+    .pdf-macro-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+    .pdf-macro-val { font-size: 18px; font-weight: 800; color: var(--blue); }
+    .pdf-meal { margin-bottom: 18px; }
+    .pdf-meal-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+    .pdf-food-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+    .pdf-food-macros { color: var(--muted); }
+    .pdf-footer { background: var(--blue-pale); padding: 14px 36px; display: flex; justify-content: space-between; align-items: center; }
+    .pdf-footer-text { font-size: 10px; color: var(--muted); }
+    .pdf-footer-logo { font-size: 11px; font-weight: 700; color: var(--blue); letter-spacing: 1px; }
+
+    /* ===== NOTIFICATION ===== */
+    .toast {
+      position: fixed; bottom: 28px; right: 28px;
+      background: var(--text); color: white;
+      padding: 12px 18px; border-radius: 10px;
+      font-size: 14px; font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s; z-index: 9999;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state { text-align: center; padding: 60px 20px; }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .empty-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+
+    /* ===== PATIENT VIEW ===== */
+    .patient-view { background: var(--bg); }
+    .patient-hero {
+      background: var(--blue);
+      padding: 28px 32px 80px;
+      color: white;
+    }
+    .patient-hero-greeting { font-size: 13px; opacity: .7; margin-bottom: 4px; }
+    .patient-hero-name { font-size: 24px; font-weight: 800; }
+    .patient-hero-sub { font-size: 13px; opacity: .7; margin-top: 4px; }
+    .patient-cards {
+      padding: 0 32px;
+      margin-top: -48px;
+    }
+
+    .day-macro-card {
+      background: white; border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: var(--shadow-lg);
+      display: grid; grid-template-columns: repeat(4,1fr); gap: 16px;
+    }
+
+    .day-macro-item { text-align: center; }
+    .day-macro-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; }
+    .day-macro-value { font-size: 20px; font-weight: 800; margin: 2px 0; }
+    .day-macro-total { font-size: 10px; color: var(--muted); }
+
+    .meal-card-patient {
+      background: white; border-radius: var(--radius);
+      margin-bottom: 14px; overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .meal-card-header {
+      padding: 16px 20px;
+      display: flex; align-items: center; gap: 12px; justify-content: space-between;
+    }
+
+    .meal-check {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2.5px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; flex-shrink: 0;
+    }
+    .meal-check.done { border-color: var(--green); background: var(--green); }
+    .meal-check.done::after { content: '✓'; color: white; font-size: 13px; font-weight: 700; }
+
+    .meal-food-item { padding: 10px 20px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .meal-food-name { font-weight: 500; }
+    .meal-food-portion { color: var(--muted); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 900px) {
+      .sidebar { width: 64px; }
+      .sidebar-logo { padding: 16px 8px; }
+      .pgf-name, .pgf-title, .user-info, .nav-label { display: none; }
+      .nav-item { justify-content: center; padding: 10px; }
+      .main { margin-left: 64px; }
+      .grid-4 { grid-template-columns: 1fr 1fr; }
+      .food-row { grid-template-columns: 1fr 70px 50px; }
+    }
+
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+    .justify-between { justify-content: space-between; }
+    .gap-2 { gap: 8px; }
+    .gap-3 { gap: 12px; }
+    .gap-4 { gap: 16px; }
+    .mt-1 { margin-top: 4px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .mt-4 { margin-top: 16px; }
+    .mb-4 { margin-bottom: 16px; }
+    .mb-6 { margin-bottom: 24px; }
+    .text-sm { font-size: 13px; }
+    .text-xs { font-size: 11px; }
+    .text-muted { color: var(--muted); }
+    .text-blue { color: var(--blue); }
+    .font-bold { font-weight: 700; }
+    .w-full { width: 100%; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="pgf-monogram">PGF</div>
+    <div class="pgf-name">Pedro Garrastazu</div>
+    <div class="pgf-title">Nutricionista</div>
+  </div>
+  <div class="nav">
+    <div class="nav-label">Principal</div>
+    <a class="nav-item" onclick="showPage('dashboard')">
+      <span class="nav-icon">📊</span> Dashboard
+    </a>
+    <div class="nav-label">Clínico</div>
+    <a class="nav-item active" onclick="showPage('pacientes')">
+      <span class="nav-icon">👥</span> Pacientes
+    </a>
+    <a class="nav-item" onclick="showPage('dieta')">
+      <span class="nav-icon">🥗</span> Prescrição de Dieta
+    </a>
+    <a class="nav-item" onclick="showPage('treino')">
+      <span class="nav-icon">💪</span> Prescrição de Treino
+    </a>
+    <div class="nav-label">Paciente</div>
+    <a class="nav-item" onclick="showPage('aluno-view')">
+      <span class="nav-icon">📱</span> Visão do Aluno
+    </a>
+    <div class="nav-label">Ferramentas</div>
+    <a class="nav-item" onclick="showPage('pdf-preview')">
+      <span class="nav-icon">📄</span> Gerar PDF
+    </a>
+    <a class="nav-item" onclick="showPage('agenda')">
+      <span class="nav-icon">📅</span> Agenda
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="avatar">PG</div>
+      <div class="user-info">
+        <div class="user-name">Pedro Garrastazu</div>
+        <div class="user-role">Nutricionista</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- ==================== PACIENTES ==================== -->
+  <div id="page-pacientes" class="page active">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Pacientes</div>
+        <div class="topbar-sub">6 pacientes ativos</div>
+      </div>
+      <div class="topbar-actions">
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="form-input search-input" placeholder="Buscar paciente..." style="width:220px" />
+        </div>
+        <button class="btn btn-primary" onclick="openModal('modal-novo-paciente')">
+          + Novo Paciente
+        </button>
+      </div>
+    </div>
+
+    <div style="padding:28px 32px">
+      <div class="grid-4 mb-6">
+        <div class="stat-card">
+          <div class="stat-label">Total Ativos</div>
+          <div class="stat-value">6</div>
+          <span class="stat-badge badge-blue">↑ 2 este mês</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Consultas Hoje</div>
+          <div class="stat-value">3</div>
+          <span class="stat-badge badge-green">● Próxima 14h</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Planos Ativos</div>
+          <div class="stat-value">6</div>
+          <span class="stat-badge badge-blue">100% cobertos</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Adesão Média</div>
+          <div class="stat-value">87<span style="font-size:16px">%</span></div>
+          <span class="stat-badge badge-green">↑ 5% semana</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Lista de Pacientes</div>
+            <div class="card-sub">Clique em um paciente para prescrever dieta</div>
+          </div>
+          <button class="btn btn-outline btn-sm">Exportar lista</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>Objetivo</th>
+              <th>Calorias prescritas</th>
+              <th>Adesão</th>
+              <th>Último check-in</th>
+              <th>Status</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr onclick="showPage('dieta')" style="cursor:pointer">
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="avatar-lg">AM</div>
+                  <div>
+                    <div class="patient-name">Ana Martins</div>
+                    <div class="patient-meta">28 anos · 62 kg · 1,65 m</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="tag badge-orange">Emagrecimento</span></td>
+              <td>1.600 kcal</td>
+              <td>
+                <div>92%</div>
+                <div class="progress-wrap"><div class="progress-fill" style="width:92%;background:var(--green)"></div></div>
+              </td>
+              <td class="text-sm text-muted">Hoje, 09h</td>
+              <td><span class="tag badge-green">Ativo</span></td>
+              <td>
+                <button class="btn btn-outline btn-sm">Prescrever</button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="avatar-lg">CS</div>
+                  <div>
+                    <div class="patient-name">Carlos Silva</div>
+                    <div class="patient-meta">35 anos · 85 kg · 1,78 m</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="tag badge-blue">Ganho de massa</span></td>
+              <td>3.200 kcal</td>
+              <td>
+                <div>78%</div>
+                <div class="progress-wrap"><div class="progress-fill" style="width:78%;background:var(--orange)"></div></div>
+              </td>
+              <td class="text-sm text-muted">Ontem, 18h</td>
+              <td><span class="tag badge-green">Ativo</span></td>
+              <td><button class="btn btn-outline btn-sm">Prescrever</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="avatar-lg">JF</div>
+                  <div>
+                    <div class="patient-name">Juliana Ferreira</div>
+                    <div class="patient-meta">41 anos · 74 kg · 1,62 m</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="tag badge-orange">Emagrecimento</span></td>
+              <td>1.800 kcal</td>
+              <td>
+                <div>95%</div>
+                <div class="progress-wrap"><div class="progress-fill" style="width:95%;background:var(--green)"></div></div>
+              </td>
+              <td class="text-sm text-muted">Hoje, 07h</td>
+              <td><span class="tag badge-green">Ativo</span></td>
+              <td><button class="btn btn-outline btn-sm">Prescrever</button></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="flex items-center gap-3">
+                  <div class="avatar-lg">RL</div>
+                  <div>
+                    <div class="patient-name">Roberto Lima</div>
+                    <div class="patient-meta">52 anos · 91 kg · 1,80 m</div>
+                  </div>
+                </div>
+              </td>
+              <td><span class="tag" style="background:#F3F4F6;color:#374151">Saúde geral</span></td>
+              <td>2.200 kcal</td>
+              <td>
+                <div>65%</div>
+                <div class="progress-wrap"><div class="progress-fill" style="width:65%;background:var(--red)"></div></div>
+              </td>
+              <td class="text-sm text-muted">3 dias atrás</td>
+              <td><span class="tag badge-orange">Atenção</span></td>
+              <td><button class="btn btn-outline btn-sm">Prescrever</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DIETA ==================== -->
+  <div id="page-dieta" class="page">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Prescrição de Dieta</div>
+        <div class="topbar-sub">Ana Martins · Emagrecimento · Meta: 1.600 kcal</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm" onclick="showPage('pacientes')">← Voltar</button>
+        <button class="btn btn-outline btn-sm">Salvar rascunho</button>
+        <button class="btn btn-primary" onclick="showToast('Plano salvo e enviado para Ana! ✅')">
+          📤 Publicar plano
+        </button>
+      </div>
+    </div>
+
+    <div style="padding:28px 32px">
+      <!-- Tabs -->
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab(this,'tab-plano')">Plano Alimentar</div>
+        <div class="tab" onclick="switchTab(this,'tab-metas')">Metas & Macros</div>
+        <div class="tab" onclick="switchTab(this,'tab-anamnese')">Anamnese</div>
+        <div class="tab" onclick="switchTab(this,'tab-evolucao')">Evolução</div>
+      </div>
+
+      <!-- TAB: PLANO ALIMENTAR -->
+      <div id="tab-plano" class="tab-content">
+
+        <!-- Macro summary -->
+        <div class="macro-summary">
+          <div class="macro-box">
+            <div class="macro-box-label">Calorias</div>
+            <div class="macro-box-value" style="color:var(--text)">1.610</div>
+            <div class="macro-box-unit">kcal · meta 1.600</div>
+            <div class="macro-box-bar" style="background:var(--border)">
+              <div style="width:100%;height:4px;background:var(--blue);border-radius:4px"></div>
+            </div>
+          </div>
+          <div class="macro-box">
+            <div class="macro-box-label">Proteína</div>
+            <div class="macro-box-value" style="color:#2563EB">128g</div>
+            <div class="macro-box-unit">32% · meta 130g</div>
+            <div class="macro-box-bar">
+              <div style="width:98%;height:4px;background:#2563EB;border-radius:4px"></div>
+            </div>
+          </div>
+          <div class="macro-box">
+            <div class="macro-box-label">Carboidrato</div>
+            <div class="macro-box-value" style="color:#D97706">168g</div>
+            <div class="macro-box-unit">42% · meta 160g</div>
+            <div class="macro-box-bar">
+              <div style="width:105%;height:4px;background:#D97706;border-radius:4px"></div>
+            </div>
+          </div>
+          <div class="macro-box">
+            <div class="macro-box-label">Gordura</div>
+            <div class="macro-box-value" style="color:#DC2626">44g</div>
+            <div class="macro-box-unit">26% · meta 45g</div>
+            <div class="macro-box-bar">
+              <div style="width:98%;height:4px;background:#DC2626;border-radius:4px"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Refeições -->
+        <div id="meals-container">
+
+          <!-- Refeição 1 -->
+          <div class="meal-block">
+            <div class="meal-header">
+              <div class="meal-title-row">
+                <span class="meal-emoji">☀️</span>
+                <div>
+                  <div class="meal-name">Café da manhã</div>
+                  <div class="meal-time">07:00 – 08:00</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="meal-kcal">382 kcal</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="font-size:16px">⌄</button>
+              </div>
+            </div>
+            <div class="meal-body">
+              <div class="food-row food-row-header">
+                <span>Alimento</span>
+                <span style="text-align:center">Qtd</span>
+                <span style="text-align:center">Prot</span>
+                <span style="text-align:center">Carb</span>
+                <span style="text-align:center">Gord</span>
+                <span style="text-align:center">Kcal</span>
+                <span></span>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Ovos mexidos</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="2 unid" />
+                <span class="food-macro macro-prot">12g</span>
+                <span class="food-macro macro-carb">1g</span>
+                <span class="food-macro macro-fat">10g</span>
+                <span class="food-macro macro-kcal">143</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Pão integral</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="2 fatias" />
+                <span class="food-macro macro-prot">6g</span>
+                <span class="food-macro macro-carb">26g</span>
+                <span class="food-macro macro-fat">2g</span>
+                <span class="food-macro macro-kcal">148</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Café com leite desnatado</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="200 ml" />
+                <span class="food-macro macro-prot">4g</span>
+                <span class="food-macro macro-carb">6g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">58</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <button class="add-food-btn" onclick="openModal('modal-add-alimento')">
+                + Adicionar alimento
+              </button>
+            </div>
+          </div>
+
+          <!-- Refeição 2 -->
+          <div class="meal-block">
+            <div class="meal-header">
+              <div class="meal-title-row">
+                <span class="meal-emoji">🍎</span>
+                <div>
+                  <div class="meal-name">Lanche da manhã</div>
+                  <div class="meal-time">10:00 – 10:30</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="meal-kcal">180 kcal</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="font-size:16px">⌄</button>
+              </div>
+            </div>
+            <div class="meal-body">
+              <div class="food-row food-row-header">
+                <span>Alimento</span>
+                <span style="text-align:center">Qtd</span>
+                <span style="text-align:center">Prot</span>
+                <span style="text-align:center">Carb</span>
+                <span style="text-align:center">Gord</span>
+                <span style="text-align:center">Kcal</span>
+                <span></span>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Iogurte grego natural</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="170g" />
+                <span class="food-macro macro-prot">17g</span>
+                <span class="food-macro macro-carb">7g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">100</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Banana prata</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="1 unid" />
+                <span class="food-macro macro-prot">1g</span>
+                <span class="food-macro macro-carb">19g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">80</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <button class="add-food-btn" onclick="openModal('modal-add-alimento')">
+                + Adicionar alimento
+              </button>
+            </div>
+          </div>
+
+          <!-- Refeição 3 -->
+          <div class="meal-block">
+            <div class="meal-header">
+              <div class="meal-title-row">
+                <span class="meal-emoji">🍽️</span>
+                <div>
+                  <div class="meal-name">Almoço</div>
+                  <div class="meal-time">12:30 – 13:30</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="meal-kcal">530 kcal</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="font-size:16px">⌄</button>
+              </div>
+            </div>
+            <div class="meal-body">
+              <div class="food-row food-row-header">
+                <span>Alimento</span><span style="text-align:center">Qtd</span>
+                <span style="text-align:center">Prot</span><span style="text-align:center">Carb</span>
+                <span style="text-align:center">Gord</span><span style="text-align:center">Kcal</span><span></span>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Frango grelhado (peito)</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="150g" />
+                <span class="food-macro macro-prot">45g</span>
+                <span class="food-macro macro-carb">0g</span>
+                <span class="food-macro macro-fat">4g</span>
+                <span class="food-macro macro-kcal">216</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Arroz branco cozido</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="4 col" />
+                <span class="food-macro macro-prot">3g</span>
+                <span class="food-macro macro-carb">38g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">172</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Feijão carioca</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="3 col" />
+                <span class="food-macro macro-prot">5g</span>
+                <span class="food-macro macro-carb">15g</span>
+                <span class="food-macro macro-fat">1g</span>
+                <span class="food-macro macro-kcal">90</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Salada verde (mix)</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="livre" />
+                <span class="food-macro macro-prot">2g</span>
+                <span class="food-macro macro-carb">3g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">20</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <button class="add-food-btn" onclick="openModal('modal-add-alimento')">
+                + Adicionar alimento
+              </button>
+            </div>
+          </div>
+
+          <!-- Refeição 4 -->
+          <div class="meal-block">
+            <div class="meal-header">
+              <div class="meal-title-row">
+                <span class="meal-emoji">🌙</span>
+                <div>
+                  <div class="meal-name">Jantar</div>
+                  <div class="meal-time">19:00 – 20:00</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="meal-kcal">518 kcal</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="font-size:16px">⌄</button>
+              </div>
+            </div>
+            <div class="meal-body">
+              <div class="food-row food-row-header">
+                <span>Alimento</span><span style="text-align:center">Qtd</span>
+                <span style="text-align:center">Prot</span><span style="text-align:center">Carb</span>
+                <span style="text-align:center">Gord</span><span style="text-align:center">Kcal</span><span></span>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Salmão assado</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="120g" />
+                <span class="food-macro macro-prot">28g</span>
+                <span class="food-macro macro-carb">0g</span>
+                <span class="food-macro macro-fat">14g</span>
+                <span class="food-macro macro-kcal">246</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Batata doce cozida</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="150g" />
+                <span class="food-macro macro-prot">2g</span>
+                <span class="food-macro macro-carb">36g</span>
+                <span class="food-macro macro-fat">0g</span>
+                <span class="food-macro macro-kcal">154</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <div class="food-row">
+                <span class="food-name">Brócolis refogado</span>
+                <input class="form-input" style="padding:4px 8px;font-size:12px;text-align:center" value="100g" />
+                <span class="food-macro macro-prot">3g</span>
+                <span class="food-macro macro-carb">7g</span>
+                <span class="food-macro macro-fat">3g</span>
+                <span class="food-macro macro-kcal">67</span>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--red)">✕</button>
+              </div>
+              <button class="add-food-btn" onclick="openModal('modal-add-alimento')">
+                + Adicionar alimento
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-3 mt-4">
+          <button class="btn btn-outline" onclick="openModal('modal-nova-refeicao')">
+            + Nova Refeição
+          </button>
+          <button class="btn btn-ghost">
+            📋 Usar template
+          </button>
+          <button class="btn btn-ghost">
+            🔄 Clonar de outro paciente
+          </button>
+        </div>
+      </div>
+
+      <!-- TAB: METAS -->
+      <div id="tab-metas" class="tab-content" style="display:none">
+        <div class="grid-2" style="gap:24px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Dados do Paciente</div></div>
+            <div class="card-body">
+              <div class="form-row form-row-2 mb-4" style="margin-bottom:16px">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Peso atual (kg)</label>
+                  <input class="form-input" value="62" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Altura (cm)</label>
+                  <input class="form-input" value="165" />
+                </div>
+              </div>
+              <div class="form-row form-row-2" style="margin-bottom:16px">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Peso meta (kg)</label>
+                  <input class="form-input" value="56" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">% Gordura atual</label>
+                  <input class="form-input" value="28" />
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:0;margin-top:16px">
+                <label class="form-label">Nível de atividade física</label>
+                <select class="form-select">
+                  <option>Sedentário (×1.2)</option>
+                  <option selected>Levemente ativo (×1.375)</option>
+                  <option>Moderadamente ativo (×1.55)</option>
+                  <option>Muito ativo (×1.725)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Metas Nutricionais</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Objetivo</label>
+                <select class="form-select">
+                  <option selected>Emagrecimento</option>
+                  <option>Ganho de massa</option>
+                  <option>Manutenção</option>
+                  <option>Performance esportiva</option>
+                </select>
+              </div>
+              <div class="form-row form-row-2" style="margin-bottom:16px">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Calorias (kcal)</label>
+                  <input class="form-input" value="1600" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Déficit calórico</label>
+                  <input class="form-input" value="-400 kcal" />
+                </div>
+              </div>
+              <div class="form-row form-row-3">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Proteína (g)</label>
+                  <input class="form-input" value="130" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Carb (g)</label>
+                  <input class="form-input" value="160" />
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label">Gordura (g)</label>
+                  <input class="form-input" value="45" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-4" style="margin-top:20px">
+          <div class="card-header"><div class="card-title">Calculadora TMB / GET</div></div>
+          <div class="card-body">
+            <div class="grid-3" style="gap:16px">
+              <div class="stat-card">
+                <div class="stat-label">TMB (Harris-Benedict)</div>
+                <div class="stat-value">1.480</div>
+                <div class="stat-unit">kcal/dia em repouso</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">GET (Gasto Total)</div>
+                <div class="stat-value">2.035</div>
+                <div class="stat-unit">kcal/dia com atividade</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-label">Meta prescrita</div>
+                <div class="stat-value">1.600</div>
+                <div class="stat-unit">kcal/dia (déficit -435)</div>
+                <span class="stat-badge badge-green">Dentro do seguro</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: ANAMNESE -->
+      <div id="tab-anamnese" class="tab-content" style="display:none">
+        <div class="grid-2" style="gap:24px">
+          <div class="card">
+            <div class="card-header"><div class="card-title">Anamnese Alimentar</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Alergias e intolerâncias</label>
+                <input class="form-input" value="Intolerância à lactose" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Alimentos que não gosta</label>
+                <input class="form-input" value="Fígado, peixe seco" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Alimentos preferidos</label>
+                <input class="form-input" value="Frango, ovos, frutas, legumes" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Número de refeições por dia</label>
+                <select class="form-select">
+                  <option>3 refeições</option>
+                  <option>4 refeições</option>
+                  <option selected>5 refeições</option>
+                  <option>6 refeições</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Observações</label>
+                <textarea class="form-textarea">Paciente tem rotina corrida, prefere refeições práticas. Come fora do lar às quartas e sextas (almoço). Treina às 6h da manhã.</textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Histórico Clínico</div></div>
+            <div class="card-body">
+              <div class="form-group">
+                <label class="form-label">Patologias</label>
+                <input class="form-input" value="Sem patologias relatadas" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Medicamentos em uso</label>
+                <input class="form-input" value="Anticoncepcional oral" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Suplementação atual</label>
+                <input class="form-input" value="Whey protein, vitamina D" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Qualidade do sono</label>
+                <select class="form-select">
+                  <option>Ruim (< 5h)</option>
+                  <option selected>Regular (5-7h)</option>
+                  <option>Bom (7-9h)</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom:0">
+                <label class="form-label">Nível de estresse (0-10)</label>
+                <input class="form-input" value="7/10 — trabalho intenso" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: EVOLUÇÃO -->
+      <div id="tab-evolucao" class="tab-content" style="display:none">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Histórico de Evolução — Ana Martins</div>
+            <button class="btn btn-primary btn-sm">+ Novo check-in</button>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Peso</th>
+                <th>% Gordura</th>
+                <th>Cintura</th>
+                <th>Quadril</th>
+                <th>Adesão</th>
+                <th>Obs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="font-bold">06/06/2026</td>
+                <td>62,0 kg</td><td>28,1%</td><td>76 cm</td><td>98 cm</td>
+                <td><span class="tag badge-green">92%</span></td>
+                <td class="text-sm text-muted">Início do protocolo</td>
+              </tr>
+              <tr>
+                <td class="font-bold">23/05/2026</td>
+                <td>63,4 kg</td><td>29,0%</td><td>78 cm</td><td>99 cm</td>
+                <td><span class="tag badge-green">88%</span></td>
+                <td class="text-sm text-muted">1ª semana difícil</td>
+              </tr>
+              <tr>
+                <td class="font-bold">09/05/2026</td>
+                <td>64,8 kg</td><td>29,8%</td><td>79 cm</td><td>100 cm</td>
+                <td><span class="tag badge-orange">75%</span></td>
+                <td class="text-sm text-muted">Ajuste de cardápio</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== DASHBOARD ==================== -->
+  <div id="page-dashboard" class="page">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Dashboard</div>
+        <div class="topbar-sub">Sexta-feira, 6 de junho de 2026</div>
+      </div>
+    </div>
+    <div style="padding:28px 32px">
+      <div class="grid-4 mb-6">
+        <div class="stat-card">
+          <div class="stat-label">Pacientes Ativos</div>
+          <div class="stat-value">6</div>
+          <span class="stat-badge badge-blue">↑ 2 este mês</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Consultas Hoje</div>
+          <div class="stat-value">3</div>
+          <span class="stat-badge badge-green">● Próxima 14h00</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Adesão Média</div>
+          <div class="stat-value">87<span style="font-size:16px">%</span></div>
+          <span class="stat-badge badge-green">↑ 5% na semana</span>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">PDFs Enviados</div>
+          <div class="stat-value">14</div>
+          <span class="stat-badge badge-blue">este mês</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Agenda de Hoje</div></div>
+        <div class="card-body">
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--blue-pale);border-radius:10px;border-left:3px solid var(--blue)">
+              <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:48px">09:00</span>
+              <div><div class="font-bold text-sm">Ana Martins</div><div class="text-xs text-muted">Retorno — Emagrecimento</div></div>
+              <span class="tag badge-green" style="margin-left:auto">Realizada</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;background:var(--blue-pale);border-radius:10px;border-left:3px solid var(--blue)">
+              <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:48px">14:00</span>
+              <div><div class="font-bold text-sm">Carlos Silva</div><div class="text-xs text-muted">1ª consulta — Hipertrofia</div></div>
+              <span class="tag badge-orange" style="margin-left:auto">Em breve</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:16px;padding:12px 16px;border:1px solid var(--border);border-radius:10px">
+              <span style="font-size:13px;font-weight:700;color:var(--muted);min-width:48px">17:30</span>
+              <div><div class="font-bold text-sm">Juliana Ferreira</div><div class="text-xs text-muted">Retorno — Emagrecimento</div></div>
+              <span class="tag" style="margin-left:auto;background:#F3F4F6;color:#6B7280">Agendada</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== VISÃO DO ALUNO ==================== -->
+  <div id="page-aluno-view" class="page" style="padding:0">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Visão do Aluno</div>
+        <div class="topbar-sub">Como Ana Martins vê o app no celular</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn btn-ghost btn-sm">← Voltar à prescrição</button>
+      </div>
+    </div>
+
+    <div style="padding:28px 32px; background:var(--bg)">
+      <!-- simula tela de celular -->
+      <div style="max-width:390px;margin:0 auto;background:#F2F2F7;border-radius:40px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.2);border:8px solid #1A1A1A">
+
+        <!-- Status bar fake -->
+        <div style="background:var(--blue);padding:12px 20px 0;display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.7)">
+          <span>9:41</span><span>●●● WiFi 🔋</span>
+        </div>
+
+        <!-- Hero -->
+        <div style="background:var(--blue);padding:20px 20px 56px">
+          <div style="font-size:11px;color:rgba(255,255,255,.65)">Bom dia 👋</div>
+          <div style="font-size:22px;font-weight:800;color:white;margin:2px 0">Ana Martins</div>
+          <div style="font-size:12px;color:rgba(255,255,255,.65)">Plano: Emagrecimento · Semana 3</div>
+        </div>
+
+        <!-- Content -->
+        <div style="margin-top:-40px;padding:0 16px 20px">
+          <!-- Macro card -->
+          <div style="background:white;border-radius:16px;padding:16px;box-shadow:0 4px 16px rgba(0,0,0,.1);margin-bottom:16px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Meta do dia</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;text-align:center">
+              <div><div style="font-size:18px;font-weight:800;color:var(--text)">1600</div><div style="font-size:9px;color:var(--muted)">kcal</div></div>
+              <div><div style="font-size:18px;font-weight:800;color:#2563EB">130g</div><div style="font-size:9px;color:var(--muted)">Prot</div></div>
+              <div><div style="font-size:18px;font-weight:800;color:#D97706">160g</div><div style="font-size:9px;color:var(--muted)">Carb</div></div>
+              <div><div style="font-size:18px;font-weight:800;color:#DC2626">45g</div><div style="font-size:9px;color:var(--muted)">Gord</div></div>
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:10px">Refeições de hoje</div>
+
+          <!-- Meal cards -->
+          <div style="background:white;border-radius:14px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;padding:14px 16px;gap:10px">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;color:white;font-size:16px">✓</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:700">☀️ Café da manhã</div>
+                <div style="font-size:11px;color:var(--muted)">07:00 · 382 kcal</div>
+              </div>
+              <span style="font-size:11px;background:#DCFCE7;color:#16A34A;padding:3px 8px;border-radius:20px;font-weight:600">Feito</span>
+            </div>
+          </div>
+
+          <div style="background:white;border-radius:14px;margin-bottom:10px;overflow:hidden;border:2px solid var(--blue)">
+            <div style="display:flex;align-items:center;padding:14px 16px;gap:10px">
+              <div style="width:36px;height:36px;border-radius:50%;background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:18px">🍎</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:700">🍎 Lanche da manhã</div>
+                <div style="font-size:11px;color:var(--muted)">10:00 · 180 kcal</div>
+              </div>
+              <span style="font-size:11px;background:var(--blue-pale);color:var(--blue);padding:3px 8px;border-radius:20px;font-weight:600">Agora</span>
+            </div>
+            <div style="border-top:1px solid var(--border);padding:10px 16px">
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid var(--border)"><span>Iogurte grego natural</span><span style="color:var(--muted)">170g</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><span>Banana prata</span><span style="color:var(--muted)">1 unid</span></div>
+              <button onclick="showToast('Refeição marcada como concluída! ✅')" style="width:100%;margin-top:10px;padding:9px;background:var(--blue);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer">
+                ✓ Marcar como feita
+              </button>
+            </div>
+          </div>
+
+          <div style="background:white;border-radius:14px;margin-bottom:10px;overflow:hidden;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;padding:14px 16px;gap:10px">
+              <div style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:18px">🍽️</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:700">🍽️ Almoço</div>
+                <div style="font-size:11px;color:var(--muted)">12:30 · 530 kcal</div>
+              </div>
+              <span style="font-size:11px;background:#F3F4F6;color:var(--muted);padding:3px 8px;border-radius:20px;font-weight:600">Pendente</span>
+            </div>
+          </div>
+
+          <div style="background:white;border-radius:14px;margin-bottom:16px;overflow:hidden;border:1px solid var(--border)">
+            <div style="display:flex;align-items:center;padding:14px 16px;gap:10px">
+              <div style="width:36px;height:36px;border-radius:50%;background:#F3F4F6;display:flex;align-items:center;justify-content:center;font-size:18px">🌙</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:700">🌙 Jantar</div>
+                <div style="font-size:11px;color:var(--muted)">19:00 · 518 kcal</div>
+              </div>
+              <span style="font-size:11px;background:#F3F4F6;color:var(--muted);padding:3px 8px;border-radius:20px;font-weight:600">Pendente</span>
+            </div>
+          </div>
+
+          <!-- Download PDF -->
+          <button onclick="showToast('PDF baixado! 📄')" style="width:100%;padding:13px;background:white;color:var(--blue);border:2px solid var(--blue);border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:8px">
+            📄 Baixar Plano em PDF
+          </button>
+          <button onclick="showToast('Mensagem enviada para Pedro! 💬')" style="width:100%;padding:13px;background:var(--blue-pale);color:var(--blue);border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer">
+            💬 Falar com o Nutricionista
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PDF PREVIEW ==================== -->
+  <div id="page-pdf-preview" class="page">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Gerar PDF</div>
+        <div class="topbar-sub">Plano alimentar para imprimir ou enviar</div>
+      </div>
+      <div class="topbar-actions">
+        <select class="form-select" style="width:auto">
+          <option>Ana Martins</option>
+          <option>Carlos Silva</option>
+          <option>Juliana Ferreira</option>
+        </select>
+        <button class="btn btn-primary" onclick="showToast('PDF gerado e enviado para Ana! 📄✅')">
+          📤 Gerar e Enviar PDF
+        </button>
+        <button class="btn btn-outline" onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+    </div>
+    <div style="padding:28px 32px">
+      <div class="pdf-preview">
+        <!-- PDF Header -->
+        <div class="pdf-header">
+          <div class="pdf-logo-text">
+            <div class="pdf-logo-mono">PGF</div>
+            <div class="pdf-logo-name">Pedro Garrastazu Frey</div>
+            <div class="pdf-logo-role">Nutricionista · CRN-2 00000</div>
+          </div>
+          <div class="pdf-divider"></div>
+          <div class="pdf-patient-info">
+            <div class="pdf-patient-name">Ana Martins</div>
+            <div>28 anos · 62 kg · 1,65 m</div>
+            <div>Plano emitido em 06/06/2026</div>
+            <div>Válido até 06/08/2026</div>
+          </div>
+        </div>
+
+        <!-- PDF Body -->
+        <div class="pdf-body">
+          <div class="pdf-section-title">Metas Nutricionais Diárias</div>
+          <div class="pdf-macro-row">
+            <div class="pdf-macro-box">
+              <div class="pdf-macro-label">Calorias</div>
+              <div class="pdf-macro-val">1.600</div>
+              <div style="font-size:10px;color:var(--muted)">kcal/dia</div>
+            </div>
+            <div class="pdf-macro-box">
+              <div class="pdf-macro-label">Proteína</div>
+              <div class="pdf-macro-val" style="color:#2563EB">130g</div>
+              <div style="font-size:10px;color:var(--muted)">32% · 2,1g/kg</div>
+            </div>
+            <div class="pdf-macro-box">
+              <div class="pdf-macro-label">Carboidrato</div>
+              <div class="pdf-macro-val" style="color:#D97706">160g</div>
+              <div style="font-size:10px;color:var(--muted)">40% das kcal</div>
+            </div>
+            <div class="pdf-macro-box">
+              <div class="pdf-macro-label">Gordura</div>
+              <div class="pdf-macro-val" style="color:#DC2626">45g</div>
+              <div style="font-size:10px;color:var(--muted)">25% das kcal</div>
+            </div>
+          </div>
+
+          <div class="pdf-section-title">Plano Alimentar</div>
+
+          <div class="pdf-meal">
+            <div class="pdf-meal-name">☀️ Café da manhã — 07h00 (382 kcal)</div>
+            <div class="pdf-food-row"><span>Ovos mexidos</span><span class="pdf-food-macros">2 unidades · Prot 12g · Carb 1g · Gord 10g · 143 kcal</span></div>
+            <div class="pdf-food-row"><span>Pão integral</span><span class="pdf-food-macros">2 fatias · Prot 6g · Carb 26g · Gord 2g · 148 kcal</span></div>
+            <div class="pdf-food-row"><span>Café com leite desnatado</span><span class="pdf-food-macros">200 ml · Prot 4g · Carb 6g · 58 kcal</span></div>
+          </div>
+
+          <div class="pdf-meal">
+            <div class="pdf-meal-name">🍎 Lanche da manhã — 10h00 (180 kcal)</div>
+            <div class="pdf-food-row"><span>Iogurte grego natural</span><span class="pdf-food-macros">170g · Prot 17g · Carb 7g · 100 kcal</span></div>
+            <div class="pdf-food-row"><span>Banana prata</span><span class="pdf-food-macros">1 unidade · Carb 19g · 80 kcal</span></div>
+          </div>
+
+          <div class="pdf-meal">
+            <div class="pdf-meal-name">🍽️ Almoço — 12h30 (530 kcal)</div>
+            <div class="pdf-food-row"><span>Frango grelhado (peito)</span><span class="pdf-food-macros">150g · Prot 45g · 216 kcal</span></div>
+            <div class="pdf-food-row"><span>Arroz branco cozido</span><span class="pdf-food-macros">4 colheres · Carb 38g · 172 kcal</span></div>
+            <div class="pdf-food-row"><span>Feijão carioca</span><span class="pdf-food-macros">3 colheres · 90 kcal</span></div>
+            <div class="pdf-food-row"><span>Salada verde (livre)</span><span class="pdf-food-macros">À vontade · 20 kcal</span></div>
+          </div>
+
+          <div class="pdf-meal">
+            <div class="pdf-meal-name">🌙 Jantar — 19h00 (518 kcal)</div>
+            <div class="pdf-food-row"><span>Salmão assado</span><span class="pdf-food-macros">120g · Prot 28g · Gord 14g · 246 kcal</span></div>
+            <div class="pdf-food-row"><span>Batata doce cozida</span><span class="pdf-food-macros">150g · Carb 36g · 154 kcal</span></div>
+            <div class="pdf-food-row"><span>Brócolis refogado</span><span class="pdf-food-macros">100g · 67 kcal</span></div>
+          </div>
+
+          <div class="pdf-section-title">Observações do Nutricionista</div>
+          <p style="font-size:12px;color:var(--text);line-height:1.6">
+            Beber no mínimo 2,5 litros de água por dia. Evitar frituras e alimentos ultraprocessados.
+            Nos dias de treino, consumir o lanche pré-treino 45 minutos antes da atividade física.
+            Em caso de dúvidas, entre em contato pelo WhatsApp ou pelo aplicativo.
+          </p>
+        </div>
+
+        <!-- PDF Footer -->
+        <div class="pdf-footer">
+          <div class="pdf-footer-text">pedro_frey@hotmail.com · @pedrogarrastazu</div>
+          <div class="pdf-footer-logo">PGF · PEDRO GARRASTAZU FREY · Nutricionista</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TREINO (placeholder) ==================== -->
+  <div id="page-treino" class="page">
+    <div class="topbar">
+      <div><div class="topbar-title">Prescrição de Treino</div><div class="topbar-sub">Em breve</div></div>
+    </div>
+    <div style="padding:60px 32px;text-align:center">
+      <div style="font-size:64px;margin-bottom:16px">💪</div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">Módulo de Treino</div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:24px">Biblioteca de exercícios, prescrição de series/reps e periodização — próxima etapa do desenvolvimento.</div>
+      <button class="btn btn-primary" onclick="showToast('Módulo de treino será desenvolvido na próxima etapa! 💪')">Iniciar desenvolvimento</button>
+    </div>
+  </div>
+
+  <!-- ==================== AGENDA (placeholder) ==================== -->
+  <div id="page-agenda" class="page">
+    <div class="topbar">
+      <div><div class="topbar-title">Agenda</div><div class="topbar-sub">Em breve</div></div>
+    </div>
+    <div style="padding:60px 32px;text-align:center">
+      <div style="font-size:64px;margin-bottom:16px">📅</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px">Agenda de Consultas</div>
+      <div style="font-size:14px;color:var(--muted)">Próxima etapa do desenvolvimento.</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ==================== MODAIS ==================== -->
+
+<!-- Modal: Add Alimento -->
+<div class="modal-overlay" id="modal-add-alimento">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Adicionar Alimento</div>
+      <button class="modal-close" onclick="closeModal('modal-add-alimento')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Buscar alimento</label>
+        <div class="search-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="form-input search-input" placeholder="Ex: frango, arroz, ovo..." id="food-search-input" />
+        </div>
+        <div class="form-hint">Banco TACO com +800 alimentos</div>
+      </div>
+      <!-- Search results -->
+      <div id="food-results" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:16px">
+        <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background=''"
+          onclick="selectFood('Peito de frango grelhado','100g','31g','0g','3g','151')">
+          <div style="font-weight:600">Peito de frango grelhado</div>
+          <div style="font-size:11px;color:var(--muted)">100g · Prot 31g · Carb 0g · Gord 3g · 151 kcal</div>
+        </div>
+        <div style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background=''"
+          onclick="selectFood('Frango assado (coxa)','100g','25g','0g','7g','163')">
+          <div style="font-weight:600">Frango assado (coxa)</div>
+          <div style="font-size:11px;color:var(--muted)">100g · Prot 25g · Carb 0g · Gord 7g · 163 kcal</div>
+        </div>
+        <div style="padding:10px 14px;cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background=''"
+          onclick="selectFood('Frango desfiado cozido','100g','28g','0g','4g','148')">
+          <div style="font-weight:600">Frango desfiado cozido</div>
+          <div style="font-size:11px;color:var(--muted)">100g · Prot 28g · Carb 0g · Gord 4g · 148 kcal</div>
+        </div>
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Alimento selecionado</label>
+          <input class="form-input" id="selected-food-name" value="Peito de frango grelhado" readonly />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Quantidade</label>
+          <input class="form-input" id="selected-food-qty" value="100g" />
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-add-alimento')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-add-alimento');showToast('Alimento adicionado! 🥗')">Adicionar à refeição</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Nova Refeição -->
+<div class="modal-overlay" id="modal-nova-refeicao">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova Refeição</div>
+      <button class="modal-close" onclick="closeModal('modal-nova-refeicao')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Nome da refeição</label>
+        <input class="form-input" placeholder="Ex: Pré-treino, Ceia..." />
+      </div>
+      <div class="form-row form-row-2">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Horário início</label>
+          <input class="form-input" type="time" value="16:00" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Emoji</label>
+          <select class="form-select">
+            <option>🥗 Salada</option><option>🍎 Fruta</option><option>💊 Suplemento</option>
+            <option>🌙 Noturno</option><option>⚡ Pré-treino</option><option>🏋️ Pós-treino</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-nova-refeicao')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-nova-refeicao');showToast('Refeição criada! ✅')">Criar refeição</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Novo Paciente -->
+<div class="modal-overlay" id="modal-novo-paciente">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Novo Paciente</div>
+      <button class="modal-close" onclick="closeModal('modal-novo-paciente')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row form-row-2" style="margin-bottom:16px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Nome completo</label>
+          <input class="form-input" placeholder="Nome do paciente" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Email</label>
+          <input class="form-input" type="email" placeholder="email@exemplo.com" />
+        </div>
+      </div>
+      <div class="form-row form-row-3" style="margin-bottom:16px">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Idade</label>
+          <input class="form-input" type="number" placeholder="28" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Peso (kg)</label>
+          <input class="form-input" type="number" placeholder="62" />
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Altura (cm)</label>
+          <input class="form-input" type="number" placeholder="165" />
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Objetivo principal</label>
+        <select class="form-select">
+          <option>Emagrecimento</option>
+          <option>Ganho de massa</option>
+          <option>Manutenção</option>
+          <option>Saúde geral</option>
+          <option>Performance esportiva</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-novo-paciente')">Cancelar</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-novo-paciente');showToast('Paciente cadastrado! 👥')">Cadastrar paciente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+  // Navigation
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  }
+
+  // Tabs
+  function switchTab(el, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    el.classList.add('active');
+    document.getElementById(tabId).style.display = 'block';
+  }
+
+  // Modals
+  function openModal(id) {
+    document.getElementById(id).classList.add('open');
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+  document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+  });
+
+  // Toast
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Food selection
+  function selectFood(name, qty, prot, carb, fat, kcal) {
+    document.getElementById('selected-food-name').value = name;
+    document.getElementById('selected-food-qty').value = qty;
+  }
+</script>
+</body>
+</html>
