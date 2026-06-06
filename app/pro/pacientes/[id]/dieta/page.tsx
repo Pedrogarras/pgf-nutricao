@@ -27,6 +27,7 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
     .limit(1)
     .single()
 
+  let isNew = false
   if (!plan) {
     const { data: newPlan } = await supabase
       .from('diet_plans')
@@ -34,6 +35,7 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
       .select()
       .single()
     plan = { ...newPlan, meals: [] }
+    isNew = true
   }
 
   // Ordena refeições e alimentos
@@ -45,5 +47,5 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
     })
   }
 
-  return <DietEditor patient={patient} plan={plan} professionalId={user.id} />
+  return <DietEditor patient={patient} plan={plan} professionalId={user.id} isNew={isNew} />
 }

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
-  updateMealFood, addSubstitute, removeSubstitute, publishPlan
+  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate
 } from './actions'
 
 // ===================== TIPOS =====================
@@ -582,11 +582,90 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
   )
 }
 
+// ===================== TEMPLATE PICKER =====================
+function TemplatePickerModal({ planId, onPicked, onBlank }: {
+  planId: string
+  onPicked: (meals: LocalMeal[]) => void
+  onBlank: () => void
+}) {
+  const [loading, setLoading] = useState<'feminino' | 'masculino' | null>(null)
+
+  async function pick(tpl: 'feminino' | 'masculino') {
+    setLoading(tpl)
+    const result = await applyTemplate(planId, tpl)
+    if (result?.meals) onPicked(result.meals as LocalMeal[])
+  }
+
+  const options = [
+    {
+      id: 'feminino' as const,
+      icon: '👩',
+      label: 'Modelo Feminino',
+      kcal: '~1300 kcal',
+      desc: 'Porções menores, 4 refeições',
+      accent: 'border-pink-200 hover:border-pink-400',
+      badge: 'bg-pink-100 text-pink-700',
+    },
+    {
+      id: 'masculino' as const,
+      icon: '👨',
+      label: 'Modelo Masculino',
+      kcal: '~1800 kcal',
+      desc: 'Porções maiores, 4 refeições',
+      accent: 'border-blue-200 hover:border-blue-400',
+      badge: 'bg-blue-100 text-blue-700',
+    },
+  ]
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">Novo Plano Alimentar</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Como deseja iniciar o plano?</p>
+        </div>
+
+        <div className="p-6 grid grid-cols-2 gap-4">
+          {options.map(opt => (
+            <button
+              key={opt.id}
+              disabled={loading !== null}
+              onClick={() => pick(opt.id)}
+              className={`border-2 rounded-xl p-5 text-left transition-all hover:shadow-md disabled:opacity-60 ${opt.accent}`}
+            >
+              <div className="text-3xl mb-3">{opt.icon}</div>
+              <div className="font-bold text-gray-900 text-sm">{opt.label}</div>
+              <div className="mt-1">
+                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${opt.badge}`}>{opt.kcal}</span>
+              </div>
+              <div className="text-xs text-gray-400 mt-2">{opt.desc}</div>
+              {loading === opt.id && (
+                <div className="text-xs text-gray-400 mt-2 font-medium">Aplicando template...</div>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="px-6 pb-6">
+          <button
+            disabled={loading !== null}
+            onClick={onBlank}
+            className="w-full border border-gray-200 rounded-xl py-3 text-sm text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-60"
+          >
+            ✏️ Começar do zero (plano em branco)
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===================== EDITOR PRINCIPAL =====================
-export default function DietEditor({ patient, plan, professionalId }: {
+export default function DietEditor({ patient, plan, professionalId, isNew }: {
   patient: Patient
   plan: LocalPlan
   professionalId: string
+  isNew?: boolean
 }) {
   const [meals, setMeals] = useState<LocalMeal[]>(
     (plan.meals ?? []).map(m => ({
@@ -597,6 +676,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
       }))
     }))
   )
+  const [showTemplatePicker, setShowTemplatePicker] = useState(isNew === true)
   const [tab, setTab] = useState<'plano' | 'metas' | 'anamnese' | 'evolucao' | 'pdf'>('plano')
   const [addMealOpen, setAddMealOpen] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -629,6 +709,14 @@ export default function DietEditor({ patient, plan, professionalId }: {
 
   return (
     <div>
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          planId={plan.id}
+          onPicked={newMeals => { setMeals(newMeals); setShowTemplatePicker(false); showToast('✅ Template aplicado! Ajuste as quantidades conforme necessário.') }}
+          onBlank={() => setShowTemplatePicker(false)}
+        />
+      )}
+
       {/* Topbar */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between no-print">
         <div className="flex items-center gap-3">
