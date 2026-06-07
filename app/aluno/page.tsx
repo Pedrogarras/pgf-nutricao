@@ -52,6 +52,14 @@ export default async function AlunoPage({
     .limit(1)
     .single()
 
+  // Last 8 check-ins for weight history
+  const { data: checkIns } = await supabase
+    .from('anthropometric_records')
+    .select('id, measured_at, weight_kg, body_fat_pct, adherence_pct')
+    .eq('patient_id', patient.id)
+    .order('measured_at', { ascending: false })
+    .limit(8)
+
   const { plan: selectedPlanId } = await searchParams
 
   // Seleciona o plano a exibir: ?plan=ID ou o primeiro da lista
@@ -398,6 +406,106 @@ export default async function AlunoPage({
             ))}
           </>
         )}
+
+        {/* Weight history */}
+        {checkIns && checkIns.length > 0 && (() => {
+          const sorted = [...checkIns].reverse() // oldest first for chart
+          const weights = sorted.map(c => c.weight_kg).filter((w): w is number => w != null)
+          const latest = checkIns[0]
+          const prev = checkIns[1]
+          const delta = latest.weight_kg != null && prev?.weight_kg != null
+            ? r(latest.weight_kg - prev.weight_kg) : null
+
+          // Mini sparkline SVG
+          let sparkline = null
+          if (weights.length >= 2) {
+            const W = 120, H = 30, PAD = 3
+            const min = Math.min(...weights), max = Math.max(...weights)
+            const range = max - min || 1
+            const pts = weights.map((w, i) => {
+              const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
+              const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
+              return `${x},${y}`
+            })
+            const trend = weights[weights.length - 1] - weights[0]
+            const color = trend <= 0 ? '#22c55e' : '#ef4444'
+            sparkline = (
+              <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="flex-shrink-0">
+                <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+                {weights.map((w, i) => {
+                  const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
+                  const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
+                  return <circle key={i} cx={x} cy={y} r="2" fill={color} opacity="0.6" />
+                })}
+              </svg>
+            )
+          }
+
+          return (
+            <>
+              <div className="text-[10px] font-bold tracking-[2px] uppercase mt-4" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Evolução
+              </div>
+              <div className="rounded-xl overflow-hidden" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+                {/* Header with sparkline */}
+                <div className="px-4 py-3.5 flex items-center justify-between gap-3" style={{ borderBottom: '1px solid var(--dark-border)' }}>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-wider mb-1" style={{ color: 'rgba(197,205,240,0.4)' }}>
+                      Peso atual
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-black text-white">
+                        {latest.weight_kg != null ? `${latest.weight_kg}` : '—'}
+                      </span>
+                      <span className="text-sm" style={{ color: 'rgba(197,205,240,0.4)' }}>kg</span>
+                      {delta != null && (
+                        <span className="text-xs font-bold" style={{ color: delta < 0 ? '#22c55e' : delta > 0 ? '#ef4444' : '#9ca3af' }}>
+                          {delta > 0 ? '+' : ''}{delta} kg
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] mt-0.5" style={{ color: 'rgba(197,205,240,0.3)' }}>
+                      {new Date(latest.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}
+                    </div>
+                  </div>
+                  {sparkline}
+                </div>
+
+                {/* History table */}
+                <div className="divide-y" style={{ borderColor: 'var(--dark-border)' }}>
+                  {checkIns.slice(0, 5).map(c => (
+                    <div key={c.id} className="flex items-center justify-between px-4 py-2.5">
+                      <span className="text-xs" style={{ color: 'rgba(197,205,240,0.5)' }}>
+                        {new Date(c.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold text-white">
+                          {c.weight_kg != null ? `${c.weight_kg} kg` : '—'}
+                        </span>
+                        {c.body_fat_pct != null && (
+                          <span className="text-xs" style={{ color: 'rgba(197,205,240,0.4)' }}>{c.body_fat_pct}% gord.</span>
+                        )}
+                        {c.adherence_pct != null && (
+                          <span
+                            className="text-[10px] font-bold px-1.5 py-0.5 rounded"
+                            style={c.adherence_pct >= 80
+                              ? { background: 'rgba(34,197,94,0.15)', color: '#4ade80' }
+                              : c.adherence_pct >= 50
+                              ? { background: 'rgba(59,130,246,0.15)', color: '#93C5FD' }
+                              : { background: 'rgba(239,68,68,0.15)', color: '#fca5a5' }
+                            }
+                          >
+                            {c.adherence_pct}% adesão
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )
+        })()}
 
         {/* Footer ornament */}
         <div className="flex items-center justify-center gap-3 pt-4 pb-2" style={{ opacity: 0.2 }}>
