@@ -8,7 +8,8 @@ interface Props { profile: Profile }
 
 const NAV = [
   { label: 'Principal', items: [
-    { href: '/pro/dashboard', label: 'Dashboard' },
+    { href: '/pro/dashboard',      label: 'Dashboard' },
+    { href: '/pro/notificacoes',   label: '🔔 Notificações' },
   ]},
   { label: 'Clínico', items: [
     { href: '/pro/pacientes',  label: 'Pacientes' },

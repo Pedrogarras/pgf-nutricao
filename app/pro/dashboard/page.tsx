@@ -181,11 +181,11 @@ export default async function DashboardPage() {
         {/* ── Quick Actions ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-5 gap-3 mb-8">
           {[
-            { href: '/pro/pacientes',  icon: '👤', label: 'Pacientes',         desc: 'Gerenciar cadastros',     color: '#2563EB' },
-            { href: '/pro/mensagens',  icon: '💬', label: 'Mensagens',          desc: 'Templates WhatsApp',       color: '#10B981' },
-            { href: '/pro/templates',  icon: '⭐', label: 'Templates',          desc: 'Refeições reutilizáveis',  color: '#F59E0B' },
-            { href: '/pro/alimentos',  icon: '🥦', label: 'Alimentos',          desc: 'Banco TACO + custom',      color: '#8B5CF6' },
-            { href: '/pro/agenda',     icon: '📅', label: 'Agenda',             desc: 'Consultas agendadas',      color: '#EF4444' },
+            { href: '/pro/pacientes',      icon: '👤', label: 'Pacientes',         desc: 'Gerenciar cadastros',     color: '#2563EB' },
+            { href: '/pro/notificacoes',  icon: '🔔', label: 'Follow-up',         desc: 'Notificações & lembretes', color: '#F59E0B' },
+            { href: '/pro/mensagens',    icon: '💬', label: 'Mensagens',          desc: 'Templates WhatsApp',       color: '#10B981' },
+            { href: '/pro/agenda',       icon: '📅', label: 'Agenda',             desc: 'Consultas agendadas',      color: '#EF4444' },
+            { href: '/pro/calculadora',  icon: '🧮', label: 'Calculadora',        desc: 'TMB e macros',             color: '#8B5CF6' },
           ].map(a => (
             <Link key={a.href} href={a.href}
               className="card p-4 hover:shadow-md transition-all group block text-center"
