@@ -736,25 +736,73 @@ export default async function AlunoPage({
           </>
         )}
 
-        {/* Quick shortcuts */}
-        <div className="grid grid-cols-4 gap-2 mb-2 last:mb-0">
-          {[
-            { href: '/aluno/plano',       icon: '🥗', label: 'Plano' },
-            { href: '/aluno/diario',      icon: '📔', label: 'Diário' },
-            { href: '/aluno/agua',        icon: '💧', label: 'Água' },
-            { href: '/aluno/evolucao',    icon: '📈', label: 'Evolução' },
-            { href: '/aluno/suplementos', icon: '💊', label: 'Suplementos' },
-            { href: '/aluno/exames',      icon: '🔬', label: 'Exames' },
-            { href: '/aluno/aderencia',   icon: '📊', label: 'Aderência' },
-            { href: '/aluno/metas',       icon: '🎯', label: 'Metas' },
-          ].map(item => (
-            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1.5 rounded-xl py-3 transition-all"
-              style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-              <div className="text-xl">{item.icon}</div>
-              <div className="text-[10px] font-semibold text-white">{item.label}</div>
-            </Link>
-          ))}
-        </div>
+        {/* Quick shortcuts with status hints */}
+        {(() => {
+          const waterPct = Math.min(100, Math.round((waterMl / waterGoal) * 100))
+          const shortcuts = [
+            {
+              href: '/aluno/plano', icon: '🥗', label: 'Plano',
+              hint: selectedPlan ? selectedPlan.title?.slice(0, 10) || 'Ativo' : null,
+              dot: selectedPlan ? 'green' : null,
+            },
+            {
+              href: '/aluno/diario', icon: '📔', label: 'Diário',
+              hint: todayMeals > 0 ? `${todayMeals} ref.` : 'Hoje',
+              dot: todayMeals > 0 ? 'green' : 'amber',
+            },
+            {
+              href: '/aluno/agua', icon: '💧', label: 'Água',
+              hint: waterMl > 0 ? `${waterPct}%` : 'Meta',
+              dot: waterMl >= waterGoal ? 'green' : waterMl > 0 ? 'blue' : null,
+            },
+            {
+              href: '/aluno/evolucao', icon: '📈', label: 'Evolução',
+              hint: checkIns && checkIns.length > 0 ? `${checkIns.length} reg.` : null,
+              dot: null,
+            },
+            {
+              href: '/aluno/suplementos', icon: '💊', label: 'Suplementos',
+              hint: null, dot: null,
+            },
+            {
+              href: '/aluno/exames', icon: '🔬', label: 'Exames',
+              hint: null, dot: null,
+            },
+            {
+              href: '/aluno/aderencia', icon: '📊', label: 'Aderência',
+              hint: null, dot: null,
+            },
+            {
+              href: '/aluno/metas', icon: '🎯', label: 'Metas',
+              hint: activeGoals && activeGoals.length > 0 ? `${activeGoals.length} ativas` : null,
+              dot: activeGoals && activeGoals.length > 0 ? 'amber' : null,
+            },
+          ]
+          const dotColors: Record<string, string> = {
+            green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
+          }
+          return (
+            <div className="grid grid-cols-4 gap-2 mb-2 last:mb-0">
+              {shortcuts.map(item => (
+                <Link key={item.href} href={item.href}
+                  className="flex flex-col items-center gap-1 rounded-xl py-3 px-1 transition-all relative"
+                  style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+                  {item.dot && (
+                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full"
+                      style={{ background: dotColors[item.dot] }} />
+                  )}
+                  <div className="text-xl">{item.icon}</div>
+                  <div className="text-[10px] font-semibold text-white">{item.label}</div>
+                  {item.hint && (
+                    <div className="text-[9px] leading-none truncate max-w-full px-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {item.hint}
+                    </div>
+                  )}
+                </Link>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Footer ornament */}
         <div className="flex items-center justify-center gap-3 pt-4 pb-2" style={{ opacity: 0.2 }}>
