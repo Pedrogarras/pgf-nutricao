@@ -241,6 +241,12 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               📸 Fotos
             </Link>
             <Link
+              href={`/pro/pacientes/${patient.id}/diario`}
+              className="btn btn-outline btn-sm"
+            >
+              📔 Diário
+            </Link>
+            <Link
               href={`/pro/pacientes/${patient.id}/treino`}
               className="btn btn-outline btn-sm"
             >

@@ -596,6 +596,27 @@ export default async function AlunoPage({
           </div>
         )}
 
+        {/* Diary shortcut */}
+        <Link
+          href="/aluno/diario"
+          className="flex items-center justify-between w-full rounded-xl px-4 py-3.5 transition-all"
+          style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+              style={{ background: 'rgba(37,99,235,0.12)' }}>
+              📔
+            </div>
+            <div>
+              <div className="text-sm font-semibold text-white">Diário Alimentar</div>
+              <div className="text-[11px]" style={{ color: 'rgba(197,205,240,0.4)' }}>Registre o que você come</div>
+            </div>
+          </div>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </Link>
+
         {/* Footer ornament */}
         <div className="flex items-center justify-center gap-3 pt-4 pb-2" style={{ opacity: 0.2 }}>
           <div className="w-12 h-px bg-white" />
