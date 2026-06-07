@@ -82,6 +82,27 @@ export default async function AlunoPage({
     .order('created_at')
     .limit(4)
 
+  // Today's diary entries and water
+  const todayDate = new Date().toISOString().split('T')[0]
+  const [{ data: todayDiary }, { data: todayWater }] = await Promise.all([
+    supabase
+      .from('diary_entries')
+      .select('id, total_kcal, meal_name, logged_at')
+      .eq('patient_id', patient.id)
+      .eq('logged_at', todayDate),
+    supabase
+      .from('water_intake')
+      .select('amount_ml, goal_ml')
+      .eq('patient_id', patient.id)
+      .eq('date', todayDate)
+      .maybeSingle(),
+  ])
+
+  const todayKcal = (todayDiary ?? []).reduce((s: number, e: { total_kcal: number | null }) => s + (e.total_kcal ?? 0), 0)
+  const todayMeals = (todayDiary ?? []).length
+  const waterMl = todayWater?.amount_ml ?? 0
+  const waterGoal = todayWater?.goal_ml ?? 2000
+
   const { plan: selectedPlanId } = await searchParams
 
   // Seleciona o plano a exibir: ?plan=ID ou o primeiro da lista
@@ -183,6 +204,49 @@ export default async function AlunoPage({
       </div>
 
       <div className="px-4 -mt-12 space-y-4">
+        {/* Today's progress card */}
+        <div className="rounded-2xl p-4 shadow-xl" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'rgba(197,205,240,0.4)' }}>
+            Hoje · {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' })}
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {/* Diary */}
+            <div className="flex flex-col items-center justify-center rounded-xl py-3 gap-1"
+              style={{ background: todayMeals > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${todayMeals > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+              <span className="text-xl">{todayMeals > 0 ? '✅' : '📔'}</span>
+              <span className="text-sm font-black" style={{ color: todayMeals > 0 ? '#4ade80' : 'rgba(255,255,255,0.4)' }}>
+                {todayMeals > 0 ? `${todayMeals} ref.` : '—'}
+              </span>
+              <span className="text-[9px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>Diário</span>
+              {todayMeals > 0 && todayKcal > 0 && (
+                <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{Math.round(todayKcal)} kcal</span>
+              )}
+            </div>
+            {/* Water */}
+            <div className="flex flex-col items-center justify-center rounded-xl py-3 gap-1"
+              style={{ background: waterMl >= waterGoal ? 'rgba(34,197,94,0.08)' : waterMl > 0 ? 'rgba(37,99,235,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${waterMl >= waterGoal ? 'rgba(34,197,94,0.2)' : waterMl > 0 ? 'rgba(37,99,235,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
+              <span className="text-xl">{waterMl >= waterGoal ? '🎉' : '💧'}</span>
+              <span className="text-sm font-black" style={{ color: waterMl >= waterGoal ? '#4ade80' : waterMl > 0 ? '#60a5fa' : 'rgba(255,255,255,0.4)' }}>
+                {waterMl > 0 ? (waterMl >= 1000 ? `${(waterMl / 1000).toFixed(1)}L` : `${waterMl}ml`) : '—'}
+              </span>
+              <span className="text-[9px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>Água</span>
+              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                {waterMl >= waterGoal ? 'Meta atingida' : `meta ${(waterGoal / 1000).toFixed(1)}L`}
+              </span>
+            </div>
+            {/* Goals */}
+            <div className="flex flex-col items-center justify-center rounded-xl py-3 gap-1"
+              style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)' }}>
+              <span className="text-xl">🎯</span>
+              <span className="text-sm font-black" style={{ color: '#fbbf24' }}>
+                {activeGoals?.length ?? 0}
+              </span>
+              <span className="text-[9px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>Metas</span>
+              <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>em progresso</span>
+            </div>
+          </div>
+        </div>
+
         {/* Macro card */}
         {selectedPlan && (() => {
           const hasGoals = selectedPlan.protein_goal_g || selectedPlan.carbs_goal_g || selectedPlan.fat_goal_g
