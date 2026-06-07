@@ -299,6 +299,59 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
     setPatientEmail('')
   }
 
+  // Consultation recording state
+  const [consultaOpen, setConsultaOpen] = useState(false)
+  const [consultaForm, setConsultaForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().slice(0, 5),
+    type: 'presencial' as 'presencial' | 'online' | 'telefone',
+    duration_min: 60,
+    notes: '',
+    weight_kg: '',
+    adherence_pct: '',
+  })
+  const [consultaSaving, setConsultaSaving] = useState(false)
+  const [consultaSuccess, setConsultaSuccess] = useState(false)
+
+  async function handleSaveConsulta() {
+    setConsultaSaving(true)
+    // Create consultation record
+    const scheduled_at = `${consultaForm.date}T${consultaForm.time}:00`
+    await fetch('/api/consultations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        patient_id: patient.id,
+        scheduled_at,
+        duration_min: Number(consultaForm.duration_min),
+        type: consultaForm.type,
+        status: 'realizado',
+        notes: consultaForm.notes || null,
+      }),
+    })
+    // Create anthropometric record if weight entered
+    if (consultaForm.weight_kg) {
+      await fetch('/api/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patient_id: patient.id,
+          measured_at: consultaForm.date,
+          weight_kg: parseFloat(consultaForm.weight_kg),
+          adherence_pct: consultaForm.adherence_pct ? parseInt(consultaForm.adherence_pct) : null,
+        }),
+      })
+    }
+    setConsultaSaving(false)
+    setConsultaSuccess(true)
+    setTimeout(() => {
+      setConsultaSuccess(false)
+      setConsultaOpen(false)
+      // Reset form for next time
+      setConsultaForm(prev => ({ ...prev, notes: '', weight_kg: '', adherence_pct: '' }))
+    }, 1500)
+  }
+
   const initials = patient.full_name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
   const activeCount = plans.filter(p => p.active).length
 
@@ -365,6 +418,13 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             </div>
           </div>
           <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => setConsultaOpen(true)}
+              className="btn btn-sm"
+              style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
+            >
+              📅 Consulta
+            </button>
             <button
               onClick={() => { setEditError(''); setShowEditPatient(true) }}
               className="btn btn-ghost btn-sm"
@@ -839,6 +899,117 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                 {accessLoading ? 'Salvando...' : showAccessModal === 'create' ? 'Criar acesso' : 'Salvar senha'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Quick Consultation Modal ── */}
+      {consultaOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.82)' }}
+          onClick={e => e.target === e.currentTarget && setConsultaOpen(false)}
+        >
+          <div
+            className="relative rounded-2xl p-7 w-full max-w-md shadow-2xl"
+            style={{ background: 'var(--dark-card)', border: '1px solid rgba(37,99,235,0.35)' }}
+          >
+            <div className="absolute top-0 left-8 right-8 h-px rounded-full"
+              style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
+
+            {consultaSuccess ? (
+              <div className="text-center py-6">
+                <div className="text-4xl mb-3">✅</div>
+                <div className="text-white font-bold text-lg">Consulta registrada!</div>
+                <div className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Dados salvos com sucesso</div>
+              </div>
+            ) : (
+              <>
+                <div className="font-black text-white text-lg tracking-tight mb-0.5">📅 Registrar Consulta</div>
+                <div className="text-sm mb-5" style={{ color: 'rgba(255,255,255,0.38)' }}>{patient.full_name}</div>
+
+                <div className="space-y-4">
+                  {/* Date + Time */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Data</label>
+                      <input type="date" value={consultaForm.date}
+                        onChange={e => setConsultaForm(p => ({ ...p, date: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Horário</label>
+                      <input type="time" value={consultaForm.time}
+                        onChange={e => setConsultaForm(p => ({ ...p, time: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                    </div>
+                  </div>
+
+                  {/* Type + Duration */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Tipo</label>
+                      <select value={consultaForm.type}
+                        onChange={e => setConsultaForm(p => ({ ...p, type: e.target.value as typeof consultaForm.type }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}>
+                        <option value="presencial">🏥 Presencial</option>
+                        <option value="online">💻 Online</option>
+                        <option value="telefone">📞 Telefone</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Duração (min)</label>
+                      <input type="number" value={consultaForm.duration_min} min="15" max="240"
+                        onChange={e => setConsultaForm(p => ({ ...p, duration_min: Number(e.target.value) }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                    </div>
+                  </div>
+
+                  {/* Weight + Adherence */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Peso aferido (kg)</label>
+                      <input type="number" step="0.1" value={consultaForm.weight_kg} placeholder="ex: 72.5"
+                        onChange={e => setConsultaForm(p => ({ ...p, weight_kg: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Aderência (%)</label>
+                      <input type="number" min="0" max="100" value={consultaForm.adherence_pct} placeholder="0–100"
+                        onChange={e => setConsultaForm(p => ({ ...p, adherence_pct: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Notas da consulta</label>
+                    <textarea value={consultaForm.notes}
+                      onChange={e => setConsultaForm(p => ({ ...p, notes: e.target.value }))}
+                      rows={3} placeholder="Queixas, evoluções, orientações dadas..."
+                      className="w-full px-3 py-2.5 rounded-xl text-sm text-white outline-none resize-none"
+                      style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }} />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 justify-end mt-5">
+                  <button onClick={() => setConsultaOpen(false)} className="btn btn-ghost btn-sm">Cancelar</button>
+                  <button
+                    onClick={handleSaveConsulta}
+                    disabled={consultaSaving}
+                    className="btn btn-primary btn-sm"
+                  >
+                    {consultaSaving ? 'Salvando...' : '✓ Registrar Consulta'}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
