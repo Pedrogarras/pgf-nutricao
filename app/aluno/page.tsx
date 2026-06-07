@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/login/actions'
 import Link from 'next/link'
 import CheckInForm from './CheckInForm'
+import WorkoutDayTabs from './WorkoutDayTabs'
 
 export default async function AlunoPage({
   searchParams,
@@ -82,16 +83,19 @@ export default async function AlunoPage({
 
   function r(n: number) { return Math.round(n * 10) / 10 }
 
-  const totals = meals.reduce((acc: { kcal: number; protein: number; carbs: number; fat: number }, meal: { meal_foods: { quantity_g: number; food: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number } }[] }) => {
-    meal.meal_foods?.forEach((mf: { quantity_g: number; food: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number } }) => {
+  type FoodType = { kcal: number; protein_g: number; carbs_g: number; fat_g: number; fiber_g: number; sodium_mg: number; portion_g: number }
+  const totals = meals.reduce((acc: { kcal: number; protein: number; carbs: number; fat: number; fiber: number; sodium: number }, meal: { meal_foods: { quantity_g: number; food: FoodType }[] }) => {
+    meal.meal_foods?.forEach((mf: { quantity_g: number; food: FoodType }) => {
       const ratio = mf.quantity_g / (mf.food.portion_g || 100)
       acc.kcal += mf.food.kcal * ratio
       acc.protein += mf.food.protein_g * ratio
       acc.carbs += mf.food.carbs_g * ratio
       acc.fat += mf.food.fat_g * ratio
+      acc.fiber += (mf.food.fiber_g ?? 0) * ratio
+      acc.sodium += (mf.food.sodium_mg ?? 0) * ratio
     })
     return acc
-  }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+  }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
 
   return (
     <div className="max-w-md mx-auto pb-10">
@@ -194,6 +198,21 @@ export default async function AlunoPage({
                   </div>
                 ))}
               </div>
+              {/* Fiber + sodium footer */}
+              {totals.fiber > 0 || totals.sodium > 0 ? (
+                <div className="flex gap-4 mt-3 pt-3 text-xs" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  {totals.fiber > 0 && (
+                    <div style={{ color: 'rgba(197,205,240,0.5)' }}>
+                      Fibra: <span className="font-bold" style={{ color: '#4ade80' }}>{r(totals.fiber)}g</span>
+                    </div>
+                  )}
+                  {totals.sodium > 0 && (
+                    <div style={{ color: 'rgba(197,205,240,0.5)' }}>
+                      Sódio: <span className="font-bold" style={{ color: totals.sodium > 2000 ? '#fca5a5' : 'rgba(197,205,240,0.7)' }}>{Math.round(totals.sodium)}mg</span>
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           )
         })()}
@@ -432,40 +451,7 @@ export default async function AlunoPage({
         {workoutPlan && days.length > 0 && (
           <>
             <div className="text-[10px] font-bold tracking-[2px] uppercase mt-4" style={{ color: 'rgba(255,255,255,0.35)' }}>Treino</div>
-            {days.map((day: { id: string; name: string; workout_exercises: { id: string; exercise: { name: string; muscle_group: string | null; video_url: string | null }; sets: number | null; reps: string | null; rest_seconds: number | null; notes: string | null }[] }) => (
-              <div key={day.id} className="rounded-xl overflow-hidden shadow-md"
-                style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-                <div className="px-4 py-3 font-bold text-sm"
-                  style={{ background: 'rgba(90,111,204,0.15)', color: '#C5CDF0', borderBottom: '1px solid var(--dark-border)' }}>
-                  {day.name}
-                </div>
-                {day.workout_exercises.map(we => (
-                  <div key={we.id} className="px-4 py-3" style={{ borderBottom: '1px solid var(--dark-border)' }}>
-                    <div className="flex justify-between">
-                      <div>
-                        <div className="font-medium text-sm" style={{ color: 'rgba(226,232,248,0.9)' }}>{we.exercise.name}</div>
-                        {we.exercise.muscle_group && (
-                          <div className="text-xs" style={{ color: '#9BAAE6' }}>{we.exercise.muscle_group}</div>
-                        )}
-                      </div>
-                      <div className="text-right text-xs" style={{ color: 'rgba(197,205,240,0.5)' }}>
-                        <div>{we.sets ? `${we.sets}×` : ''}{we.reps ?? ''}</div>
-                        {we.rest_seconds && <div>{we.rest_seconds}s descanso</div>}
-                      </div>
-                    </div>
-                    {we.exercise.video_url && (
-                      <a href={we.exercise.video_url} target="_blank" rel="noopener noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs underline" style={{ color: '#9BAAE6' }}>
-                        Ver vídeo
-                      </a>
-                    )}
-                    {we.notes && (
-                      <div className="text-xs mt-1 italic" style={{ color: 'rgba(197,205,240,0.4)' }}>{we.notes}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))}
+            <WorkoutDayTabs days={days} planTitle={workoutPlan.title} />
           </>
         )}
 

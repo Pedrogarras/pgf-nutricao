@@ -23,6 +23,8 @@ type Patient = {
   auth_user_id?: string | null
   activity_level?: string | null
   notes?: string | null
+  date_of_birth?: string | null
+  gender?: string | null
 }
 
 interface Props {
@@ -48,6 +50,8 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
     activity_level: patient.activity_level ?? 'levemente_ativo',
     phone: patient.phone ?? '',
     notes: patient.notes ?? '',
+    date_of_birth: patient.date_of_birth ?? '',
+    gender: patient.gender ?? '',
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
@@ -64,6 +68,8 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
       activity_level: patientData.activity_level || null,
       phone: patientData.phone.trim() || null,
       notes: patientData.notes.trim() || null,
+      date_of_birth: patientData.date_of_birth || null,
+      gender: patientData.gender || null,
     })
     setEditLoading(false)
     if (result?.error) { setEditError(result.error); return }
@@ -691,6 +697,35 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                     className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
                     style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
                   />
+                </div>
+              </div>
+
+              {/* Date of birth + Gender */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}>Data de nascimento</label>
+                  <input
+                    type="date"
+                    value={patientData.date_of_birth}
+                    onChange={e => setPatientData(p => ({ ...p, date_of_birth: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)', colorScheme: 'dark' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}>Sexo biológico</label>
+                  <select
+                    value={patientData.gender}
+                    onChange={e => setPatientData(p => ({ ...p, gender: e.target.value }))}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  >
+                    <option value="">Não informado</option>
+                    <option value="F">Feminino</option>
+                    <option value="M">Masculino</option>
+                  </select>
                 </div>
               </div>
 

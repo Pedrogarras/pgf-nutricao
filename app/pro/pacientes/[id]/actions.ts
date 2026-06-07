@@ -9,6 +9,7 @@ export async function updatePatient(
     full_name?: string; weight_kg?: number | null; height_cm?: number | null
     goal?: string | null; activity_level?: string | null
     phone?: string | null; email?: string | null; notes?: string | null
+    date_of_birth?: string | null; gender?: string | null
   }
 ) {
   const supabase = await createClient()
