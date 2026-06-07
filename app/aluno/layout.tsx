@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import BottomNav from './BottomNav'
 
 function AromaticRingBg() {
   return (
@@ -31,9 +32,10 @@ export default async function AlunoLayout({ children }: { children: React.ReactN
   return (
     <div className="dark-theme min-h-screen relative" style={{ backgroundColor: '#06060A' }}>
       <AromaticRingBg />
-      <div className="relative z-10">
+      <div className="relative z-10 pb-16">
         {children}
       </div>
+      <BottomNav />
     </div>
   )
 }
