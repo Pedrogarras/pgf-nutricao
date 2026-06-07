@@ -158,6 +158,89 @@ export async function removeSubstitute(substituteId: string) {
   await supabase.from('meal_food_substitutes').delete().eq('id', substituteId)
 }
 
+export async function duplicateMeal(mealId: string, planId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // Verify plan ownership
+  const { data: plan } = await supabase.from('diet_plans').select('id').eq('id', planId).eq('professional_id', user.id).single()
+  if (!plan) return { error: 'Plano não encontrado' }
+
+  // Load the source meal with all foods and substitutes
+  const { data: sourceMeal } = await supabase
+    .from('meals')
+    .select(`id, name, time_start, emoji, sort_order, notes,
+      meal_foods(id, food_id, quantity_g, quantity_description, sort_order,
+        meal_food_substitutes(food_id, quantity_g, quantity_description, notes, sort_order)
+      )`)
+    .eq('id', mealId)
+    .eq('diet_plan_id', planId)
+    .single()
+
+  if (!sourceMeal) return { error: 'Refeição não encontrada' }
+
+  // Determine the new sort_order (append after last meal)
+  const { data: lastMeal } = await supabase
+    .from('meals')
+    .select('sort_order')
+    .eq('diet_plan_id', planId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .single()
+  const newSortOrder = (lastMeal?.sort_order ?? 0) + 1
+
+  // Create the new meal
+  const { data: newMeal, error: mealErr } = await supabase
+    .from('meals')
+    .insert({
+      diet_plan_id: planId,
+      name: `${sourceMeal.name} (cópia)`,
+      time_start: sourceMeal.time_start,
+      emoji: sourceMeal.emoji,
+      sort_order: newSortOrder,
+      notes: sourceMeal.notes,
+    })
+    .select('id, name, time_start, emoji, sort_order, notes')
+    .single()
+
+  if (mealErr || !newMeal) return { error: mealErr?.message ?? 'Erro ao duplicar' }
+
+  type SubRow = { food_id: string; quantity_g: number; quantity_description: string | null; notes: string | null; sort_order: number }
+  type FoodRow = { id: string; food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number; meal_food_substitutes: SubRow[] }
+
+  const createdFoods = []
+  for (const mf of (sourceMeal.meal_foods as FoodRow[]) ?? []) {
+    const { data: newMf } = await supabase
+      .from('meal_foods')
+      .insert({ meal_id: newMeal.id, food_id: mf.food_id, quantity_g: mf.quantity_g, quantity_description: mf.quantity_description, sort_order: mf.sort_order })
+      .select('id, food_id, quantity_g, quantity_description, sort_order')
+      .single()
+    if (!newMf) continue
+
+    for (const sub of mf.meal_food_substitutes ?? []) {
+      await supabase.from('meal_food_substitutes').insert({
+        meal_food_id: newMf.id, food_id: sub.food_id, quantity_g: sub.quantity_g,
+        quantity_description: sub.quantity_description, notes: sub.notes ?? null, sort_order: sub.sort_order,
+      })
+    }
+    createdFoods.push(newMf)
+  }
+
+  // Return the full meal with food details by re-fetching
+  const { data: fullMeal } = await supabase
+    .from('meals')
+    .select(`id, name, time_start, emoji, sort_order, notes,
+      meal_foods(id, food_id, quantity_g, quantity_description, sort_order, notes,
+        food:foods(*),
+        substitutes:meal_food_substitutes(id, food_id, quantity_g, quantity_description, notes, sort_order, food:foods(*))
+      )`)
+    .eq('id', newMeal.id)
+    .single()
+
+  return { meal: fullMeal }
+}
+
 export async function reorderMeal(planId: string, mealId: string, direction: 'up' | 'down') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

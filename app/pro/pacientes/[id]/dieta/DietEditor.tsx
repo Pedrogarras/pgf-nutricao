@@ -5,7 +5,7 @@ import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
   updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal,
-  reorderMeal, reorderMealFood
+  reorderMeal, reorderMealFood, duplicateMeal
 } from './actions'
 
 // ===================== TIPOS =====================
@@ -895,12 +895,13 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
 }
 
 // ===================== MEAL CARD =====================
-function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, isFirst, isLast }: {
+function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, onDuplicated, isFirst, isLast }: {
   meal: LocalMeal; planId: string
   onUpdate: (updated: LocalMeal) => void
   onRemoveMeal: (mealId: string) => void
   onMoveUp: () => void
   onMoveDown: () => void
+  onDuplicated: (newMeal: LocalMeal) => void
   isFirst: boolean
   isLast: boolean
 }) {
@@ -1013,6 +1014,27 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
     onRemoveMeal(meal.id)
   }
 
+  const [duplicating, setDuplicating] = useState(false)
+
+  async function handleDuplicate(e: React.MouseEvent) {
+    e.stopPropagation()
+    setDuplicating(true)
+    const result = await duplicateMeal(meal.id, planId)
+    setDuplicating(false)
+    if (result?.meal) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const m = result.meal as any
+      const newLocalMeal: LocalMeal = {
+        ...m,
+        meal_foods: (m.meal_foods ?? []).map((mf: Record<string, unknown>) => ({
+          ...mf,
+          substitutes: ((mf.substitutes as unknown[]) ?? []).sort((a: Record<string, unknown>, b: Record<string, unknown>) => (a.sort_order as number) - (b.sort_order as number)),
+        })).sort((a: Record<string, unknown>, b: Record<string, unknown>) => (a.sort_order as number) - (b.sort_order as number)),
+      }
+      onDuplicated(newLocalMeal)
+    }
+  }
+
   async function handleNotesSave() {
     if (!notesDirty) return
     await updateMeal(meal.id, { notes: mealNotes })
@@ -1061,6 +1083,20 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </div>
+          <button
+            disabled={duplicating}
+            title="Duplicar refeição"
+            className="text-gray-300 hover:text-pgf-500 transition-colors disabled:opacity-40"
+            onClick={e => { e.stopPropagation(); handleDuplicate(e) }}
+          >
+            {duplicating ? (
+              <span className="text-xs">...</span>
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+              </svg>
+            )}
+          </button>
           <button onClick={e => { e.stopPropagation(); handleRemoveMeal() }}
             className="text-gray-300 hover:text-red-400 text-lg transition-colors">✕</button>
           <span className="text-gray-400 text-sm">{collapsed ? '▸' : '▾'}</span>
@@ -1397,6 +1433,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
                   setMeals(newMeals)
                   await reorderMeal(plan.id, meal.id, 'down')
                 }}
+                onDuplicated={newMeal => setMeals(prev => [...prev, newMeal])}
               />
             ))}
 
