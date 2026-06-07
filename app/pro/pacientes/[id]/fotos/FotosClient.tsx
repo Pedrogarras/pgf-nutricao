@@ -168,9 +168,16 @@ export default function FotosClient({ patient, initialPhotos, patientId }: Props
           <span style={{ color: 'rgba(255,255,255,0.2)' }}>/</span>
           <h1 className="text-base font-bold text-white">📸 Fotos de Progresso</h1>
         </div>
-        <button onClick={() => setUploadOpen(true)} className="btn btn-primary btn-sm">
-          + Nova foto
-        </button>
+        <div className="flex gap-2">
+          {photos.length >= 2 && (
+            <Link href={`/pro/pacientes/${patientId}/fotos/comparar`} className="btn btn-outline btn-sm">
+              ↔ Comparar
+            </Link>
+          )}
+          <button onClick={() => setUploadOpen(true)} className="btn btn-primary btn-sm">
+            + Nova foto
+          </button>
+        </div>
       </div>
 
       <div className="p-8">
