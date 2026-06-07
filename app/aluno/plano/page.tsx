@@ -178,13 +178,22 @@ export default function AlunoPlanoPage() {
           <h1 className="text-base font-bold text-white">🥗 Meu Plano Alimentar</h1>
         </div>
         {plan && (
-          <Link
-            href="/aluno/diario"
-            className="btn btn-sm"
-            style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
-          >
-            📔 Registrar
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href="/aluno/plano/imprimir"
+              className="btn btn-sm"
+              style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.12)' }}
+            >
+              🖨️ Imprimir
+            </Link>
+            <Link
+              href="/aluno/diario"
+              className="btn btn-sm"
+              style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
+            >
+              📔 Registrar
+            </Link>
+          </div>
         )}
       </div>
 
