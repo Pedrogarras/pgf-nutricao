@@ -62,6 +62,17 @@ export default async function AlunoPage({
     .order('measured_at', { ascending: false })
     .limit(8)
 
+  // Next upcoming consultation
+  const { data: nextConsultation } = await supabase
+    .from('consultations')
+    .select('id, scheduled_at, duration_min, type, status')
+    .eq('patient_id', patient.id)
+    .in('status', ['agendado', 'confirmado'])
+    .gte('scheduled_at', new Date().toISOString())
+    .order('scheduled_at')
+    .limit(1)
+    .single()
+
   const { plan: selectedPlanId } = await searchParams
 
   // Seleciona o plano a exibir: ?plan=ID ou o primeiro da lista
@@ -106,6 +117,22 @@ export default async function AlunoPage({
         <div className="absolute top-0 left-0 right-0 h-px"
           style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
 
+        {nextConsultation && (
+          <div className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'rgba(147,197,253,0.7)' }}>Próxima consulta</div>
+              <div className="text-xs font-semibold text-white">
+                {new Date(nextConsultation.scheduled_at).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' })}
+                {' às '}
+                {new Date(nextConsultation.scheduled_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                {' · '}{nextConsultation.type === 'presencial' ? '🏥 Presencial' : nextConsultation.type === 'online' ? '💻 Online' : '📞 Telefone'}
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex justify-between items-start mb-2">
           <div>
             <div className="text-[10px] font-medium tracking-widest uppercase mb-1"

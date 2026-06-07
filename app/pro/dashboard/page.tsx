@@ -8,6 +8,10 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  const todayEnd = new Date()
+  todayEnd.setHours(23, 59, 59, 999)
 
   const [
     { count: totalPatients },
@@ -15,12 +19,14 @@ export default async function DashboardPage() {
     { count: activePlans },
     { count: patientsWithAccess },
     { data: recentCheckIns },
+    { data: todayConsultations },
   ] = await Promise.all([
     supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
     supabase.from('patients').select('id,full_name,goal,weight_kg,created_at').eq('professional_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(5),
     supabase.from('diet_plans').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
     supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true).not('auth_user_id', 'is', null),
     supabase.from('anthropometric_records').select('id, patient_id, measured_at, weight_kg, adherence_pct, patients(full_name)').eq('professional_id', user.id).order('measured_at', { ascending: false }).limit(8),
+    supabase.from('consultations').select('id, scheduled_at, duration_min, type, status, patient:patients(id, full_name)').eq('professional_id', user.id).gte('scheduled_at', todayStart.toISOString()).lte('scheduled_at', todayEnd.toISOString()).order('scheduled_at'),
   ])
 
   // Find patients with no check-in in last 30 days
@@ -105,6 +111,43 @@ export default async function DashboardPage() {
             <div className="text-xs text-gray-400 mt-1">Upload de vídeos e exercícios</div>
           </Link>
         </div>
+
+        {/* Today's consultations */}
+        {todayConsultations && todayConsultations.length > 0 && (
+          <div className="card mb-6">
+            <div className="card-header">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="card-title">Consultas de Hoje</span>
+              </div>
+              <Link href="/pro/agenda" className="btn btn-outline btn-sm">Ver agenda</Link>
+            </div>
+            <div className="divide-y divide-gray-50">
+              {todayConsultations.map(c => {
+                const patient = c.patient as unknown as { id: string; full_name: string } | null
+                const dt = new Date(c.scheduled_at)
+                const time = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                const statusColors: Record<string, string> = { agendado: 'badge-blue', confirmado: 'badge-green', realizado: 'badge-gray', cancelado: 'badge-red', faltou: 'bg-amber-50 text-amber-700 border border-amber-200' }
+                const statusLabel: Record<string, string> = { agendado: 'Agendado', confirmado: 'Confirmado', realizado: 'Realizado', cancelado: 'Cancelado', faltou: 'Faltou' }
+                return (
+                  <div key={c.id} className="flex items-center justify-between px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="text-sm font-black text-pgf-600 w-12">{time}</div>
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">{patient?.full_name ?? '(sem paciente)'}</div>
+                        <div className="text-xs text-gray-400">{c.duration_min} min · {c.type === 'presencial' ? '🏥 Presencial' : c.type === 'online' ? '💻 Online' : '📞 Telefone'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`badge text-[10px] ${statusColors[c.status as string] ?? 'badge-blue'}`}>{statusLabel[c.status as string] ?? c.status}</span>
+                      {patient && <Link href={`/pro/pacientes/${patient.id}`} className="btn btn-outline btn-sm">Abrir</Link>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-6">
           {/* Patients needing attention */}

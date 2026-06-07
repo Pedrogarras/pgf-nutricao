@@ -15,7 +15,7 @@ interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; qua
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
 interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
 interface LocalAnamnesis { allergies?: string | null; dislikes?: string | null; preferences?: string | null; meals_per_day?: string | null; supplements?: string | null; medications?: string | null; pathologies?: string | null; sleep_quality?: string | null; stress_level?: string | null; notes?: string | null }
-interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; meals: LocalMeal[]; anamnesis?: LocalAnamnesis | null }
+interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; valid_from?: string | null; valid_until?: string | null; meals: LocalMeal[]; anamnesis?: LocalAnamnesis | null }
 
 // ===================== HELPERS =====================
 function calcMacros(qty: number, food: LocalFood) {
@@ -1774,6 +1774,8 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
   const [prot, setProt] = useState(String(plan.protein_goal_g ?? ''))
   const [carb, setCarb] = useState(String(plan.carbs_goal_g ?? ''))
   const [fat, setFat] = useState(String(plan.fat_goal_g ?? ''))
+  const [validFrom, setValidFrom] = useState(plan.valid_from ?? '')
+  const [validUntil, setValidUntil] = useState(plan.valid_until ?? '')
 
   const w = patient.weight_kg ?? 0, h = patient.height_cm ?? 0
   const age = patient.date_of_birth
@@ -1816,6 +1818,8 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
       carbs_goal_g: Number(carb) || null,
       fat_goal_g: Number(fat) || null,
       notes: fd.get('notes') as string,
+      valid_from: validFrom || null,
+      valid_until: validUntil || null,
     })
     setSaving(false)
     onSaved('Metas salvas.')
@@ -1875,6 +1879,16 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
                 }
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="form-label">Vigência: Início</label>
+                <input type="date" value={validFrom} onChange={e => setValidFrom(e.target.value)} className="form-input" style={{ colorScheme: 'light' }} />
+              </div>
+              <div>
+                <label className="form-label">Vigência: Fim (opcional)</label>
+                <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)} className="form-input" style={{ colorScheme: 'light' }} />
+              </div>
+            </div>
             <div>
               <label className="form-label">Orientações do plano</label>
               <textarea name="notes" defaultValue={plan.notes ?? ''} className="form-textarea" rows={3} placeholder="Orientações gerais, restrições..." />
