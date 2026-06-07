@@ -48,6 +48,7 @@ export default async function RelatoriosPage() {
     { data: activeGoals },
     { data: achievedGoals },
     { data: allPlans },
+    { data: workoutLogs30 },
   ] = await Promise.all([
     supabase.from('patients')
       .select('id, full_name, weight_kg, height_cm, date_of_birth, gender, goal, active, created_at, auth_user_id')
@@ -89,6 +90,11 @@ export default async function RelatoriosPage() {
     supabase.from('diet_plans')
       .select('patient_id, kcal_goal, active, published_at, created_at')
       .eq('professional_id', user.id),
+
+    // Workout logs last 30 days (RLS auto-filters to professional's patients)
+    supabase.from('workout_logs')
+      .select('patient_id, logged_at, duration_min, rpe')
+      .gte('logged_at', new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]),
   ])
 
   const patients = allPatients ?? []
@@ -218,6 +224,43 @@ export default async function RelatoriosPage() {
   // --- Top weight loss ---
   const topLoss = weightChanges.filter(w => w.delta < 0).slice(0, 5)
 
+  // --- Workout adherence (last 30 days) ---
+  const wLogs = workoutLogs30 ?? []
+  const wByPatient = new Map<string, number>()
+  const rpeByPatient = new Map<string, number[]>()
+  for (const l of wLogs) {
+    wByPatient.set(l.patient_id, (wByPatient.get(l.patient_id) ?? 0) + 1)
+    if (l.rpe) {
+      const arr = rpeByPatient.get(l.patient_id) ?? []
+      arr.push(l.rpe)
+      rpeByPatient.set(l.patient_id, arr)
+    }
+  }
+  const totalWorkoutSessions = wLogs.length
+  const patientsWithWorkout = wByPatient.size
+  const avgSessionsPer30 = patientsWithWorkout > 0
+    ? r([...wByPatient.values()].reduce((s, v) => s + v, 0) / patientsWithWorkout)
+    : 0
+  const allRpeValues = wLogs.filter(l => l.rpe).map(l => l.rpe as number)
+  const overallAvgRpe = allRpeValues.length > 0
+    ? r(allRpeValues.reduce((s, v) => s + v, 0) / allRpeValues.length)
+    : null
+  const avgDuration30 = wLogs.filter(l => l.duration_min).length > 0
+    ? Math.round(wLogs.filter(l => l.duration_min).reduce((s, l) => s + (l.duration_min ?? 0), 0) / wLogs.filter(l => l.duration_min).length)
+    : null
+
+  const topWorkoutPatients = activePatients
+    .map(p => ({ ...p, sessions: wByPatient.get(p.id) ?? 0 }))
+    .filter(p => p.sessions > 0)
+    .sort((a, b) => b.sessions - a.sessions)
+    .slice(0, 5)
+
+  // Workout freq distribution (last 30 days)
+  const wFreqNone  = activePatients.filter(p => (wByPatient.get(p.id) ?? 0) === 0).length
+  const wFreqLow   = activePatients.filter(p => { const s = wByPatient.get(p.id) ?? 0; return s >= 1 && s <= 4 }).length
+  const wFreqMid   = activePatients.filter(p => { const s = wByPatient.get(p.id) ?? 0; return s >= 5 && s <= 11 }).length
+  const wFreqHigh  = activePatients.filter(p => (wByPatient.get(p.id) ?? 0) >= 12).length
+
   // --- Month label ---
   const now = new Date()
   const monthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })
@@ -244,7 +287,7 @@ export default async function RelatoriosPage() {
       </div>
 
       {/* ─── Row 1: key KPIs ─── */}
-      <div className="grid grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-6 gap-4 mb-8">
         {[
           {
             label: 'Pacientes ativos',
@@ -280,6 +323,13 @@ export default async function RelatoriosPage() {
             sub: `${activeGoalCount} em progresso`,
             color: '#FCD34D',
             icon: '🏆',
+          },
+          {
+            label: 'Treinos (30d)',
+            value: totalWorkoutSessions,
+            sub: `${patientsWithWorkout} pac. ativos`,
+            color: '#4ADE80',
+            icon: '🏋️',
           },
         ].map(kpi => (
           <div key={kpi.label}
@@ -558,6 +608,105 @@ export default async function RelatoriosPage() {
             style={{ background: 'rgba(37,99,235,0.1)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.25)' }}>
             Ver lista de pacientes →
           </Link>
+        </div>
+      </div>
+
+      {/* ─── Row 5: Workout adherence ─── */}
+      <div className="grid grid-cols-2 gap-6 mb-8">
+
+        {/* Workout stats summary */}
+        <div className="rounded-2xl p-5" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-[2px] mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            Aderência ao Treino (30 dias)
+          </div>
+          <div className="text-sm font-black text-white mb-4">
+            {totalWorkoutSessions} sessões registradas
+          </div>
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {[
+              { label: 'Pacientes ativos', value: patientsWithWorkout, color: '#4ADE80', icon: '🏋️' },
+              { label: 'Sem registro',     value: activePatients.length - patientsWithWorkout, color: wFreqNone > activePatients.length * 0.5 ? '#F87171' : '#FCD34D', icon: '😴' },
+              { label: 'Sessões/paciente', value: avgSessionsPer30, color: '#60A5FA', icon: '📊' },
+              { label: 'RPE médio',        value: overallAvgRpe ?? '—', color: overallAvgRpe ? (overallAvgRpe >= 7 ? '#FB923C' : '#34D399') : '#9CA3AF', icon: '💪' },
+            ].map(stat => (
+              <div key={stat.label} className="rounded-xl p-3 text-center"
+                style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div className="text-xl mb-1">{stat.icon}</div>
+                <div className="text-lg font-black" style={{ color: stat.color }}>{stat.value}</div>
+                <div className="text-[9px] mt-0.5 leading-tight" style={{ color: 'rgba(255,255,255,0.3)' }}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+          {/* Frequency distribution */}
+          <div className="space-y-2">
+            {(() => {
+              const total = activePatients.length || 1
+              return [
+                { label: 'Sem sessões',  pct: Math.round(wFreqNone/total*100),  color: '#F87171', count: wFreqNone },
+                { label: '1-4 sessões',  pct: Math.round(wFreqLow/total*100),   color: '#FCD34D', count: wFreqLow },
+                { label: '5-11 sessões', pct: Math.round(wFreqMid/total*100),   color: '#60A5FA', count: wFreqMid },
+                { label: '12+ sessões',  pct: Math.round(wFreqHigh/total*100),  color: '#4ADE80', count: wFreqHigh },
+              ].map(bar => <DistBar key={bar.label} {...bar} />)
+            })()}
+          </div>
+          {avgDuration30 && (
+            <div className="mt-3 text-[11px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+              Duração média: <span className="font-bold text-white">{avgDuration30} min/sessão</span>
+            </div>
+          )}
+        </div>
+
+        {/* Top workout patients */}
+        <div className="rounded-2xl p-5" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+          <div className="text-[10px] font-bold uppercase tracking-[2px] mb-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
+            Mais Consistentes no Treino
+          </div>
+          <div className="text-sm font-black text-white mb-4">
+            Últimos 30 dias
+          </div>
+          {topWorkoutPatients.length > 0 ? (
+            <div className="space-y-2">
+              {topWorkoutPatients.map((p, i) => {
+                const patientRpe = rpeByPatient.get(p.id)
+                const avgRpe = patientRpe && patientRpe.length > 0
+                  ? r(patientRpe.reduce((s, v) => s + v, 0) / patientRpe.length)
+                  : null
+                const rpeColor = avgRpe ? (avgRpe >= 7 ? '#FB923C' : avgRpe >= 5 ? '#FBBF24' : '#4ADE80') : '#9CA3AF'
+                return (
+                  <div key={p.id} className="flex items-center gap-2">
+                    <div className="text-[11px] font-bold w-4 text-center flex-shrink-0" style={{ color: 'rgba(255,255,255,0.2)' }}>{i + 1}</div>
+                    <Link href={`/pro/pacientes/${p.id}/treino/logs`} className="flex-1 min-w-0">
+                      <span className="text-xs font-semibold text-white truncate block hover:text-green-300 transition-colors">
+                        {p.full_name.split(' ')[0]} {p.full_name.split(' ').slice(-1)[0]}
+                      </span>
+                    </Link>
+                    <div className="flex gap-0.5 items-center">
+                      {Array.from({ length: Math.min(p.sessions, 12) }).map((_, s) => (
+                        <div key={s} className="w-2 h-2 rounded-sm" style={{ background: '#4ADE80', opacity: 0.7 + (s / 12) * 0.3 }} />
+                      ))}
+                    </div>
+                    <div className="text-[10px] font-bold flex-shrink-0" style={{ color: '#4ADE80' }}>{p.sessions}×</div>
+                    {avgRpe && (
+                      <div className="text-[10px] font-bold flex-shrink-0" style={{ color: rpeColor }}>RPE {avgRpe}</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="text-xs py-6 text-center" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              Nenhum treino registrado nos últimos 30 dias
+            </div>
+          )}
+          {patientsWithWorkout === 0 && activePatients.length > 0 && (
+            <div className="mt-4 rounded-xl p-3"
+              style={{ background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.2)' }}>
+              <div className="text-xs text-amber-400 font-semibold mb-1">💡 Dica</div>
+              <div className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>
+                Pacientes com acesso ao app podem registrar seus treinos diretamente pelo celular.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
