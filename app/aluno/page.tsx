@@ -126,6 +126,24 @@ export default async function AlunoPage({
         <div className="absolute top-0 left-0 right-0 h-px"
           style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
 
+        {patient.public_message && (
+          <div className="mb-3 rounded-xl p-4" style={{ background: 'rgba(37,99,235,0.10)', border: '1px solid rgba(37,99,235,0.28)' }}>
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <span className="text-[10px] font-bold uppercase tracking-[2px]" style={{ color: 'rgba(147,197,253,0.75)' }}>
+                Mensagem do seu nutricionista
+              </span>
+            </div>
+            <div className="text-sm text-white leading-relaxed">{patient.public_message}</div>
+            {patient.public_message_at && (
+              <div className="text-[10px] mt-1.5" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                {new Date(patient.public_message_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+              </div>
+            )}
+          </div>
+        )}
         {nextConsultation && (
           <div className="mb-3 px-3 py-2 rounded-xl flex items-center gap-2.5" style={{ background: 'rgba(37,99,235,0.12)', border: '1px solid rgba(37,99,235,0.25)' }}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

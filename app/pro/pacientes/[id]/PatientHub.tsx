@@ -174,6 +174,7 @@ type Patient = {
   notes?: string | null
   date_of_birth?: string | null
   gender?: string | null
+  public_message?: string | null
 }
 
 interface Props {
@@ -201,6 +202,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
     notes: patient.notes ?? '',
     date_of_birth: patient.date_of_birth ?? '',
     gender: patient.gender ?? '',
+    public_message: patient.public_message ?? '',
   })
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError] = useState('')
@@ -209,6 +211,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
     if (!patientData.full_name.trim()) return
     setEditLoading(true)
     setEditError('')
+    const msgTrimmed = patientData.public_message.trim() || null
     const result = await updatePatient(patient.id, {
       full_name: patientData.full_name.trim(),
       weight_kg: patientData.weight_kg ? parseFloat(patientData.weight_kg) : null,
@@ -219,6 +222,8 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
       notes: patientData.notes.trim() || null,
       date_of_birth: patientData.date_of_birth || null,
       gender: patientData.gender || null,
+      public_message: msgTrimmed,
+      public_message_at: msgTrimmed ? new Date().toISOString() : null,
     })
     setEditLoading(false)
     if (result?.error) { setEditError(result.error); return }
@@ -1168,6 +1173,23 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                   rows={3}
                   className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none resize-none"
                   style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                />
+              </div>
+
+              {/* Public message */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-1"
+                  style={{ color: 'rgba(37,99,235,0.8)' }}>💬 Mensagem para o paciente</label>
+                <div className="text-[10px] mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  Aparece em destaque na tela inicial do paciente
+                </div>
+                <textarea
+                  value={patientData.public_message}
+                  onChange={e => setPatientData(p => ({ ...p, public_message: e.target.value }))}
+                  placeholder="Ex: Parabéns pela dedicação esta semana! Continue assim 💪"
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none resize-none"
+                  style={{ background: 'rgba(37,99,235,0.07)', border: '1px solid rgba(37,99,235,0.3)' }}
                 />
               </div>
 
