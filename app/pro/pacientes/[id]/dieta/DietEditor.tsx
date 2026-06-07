@@ -534,6 +534,7 @@ function EditFoodModal({ mf, onClose, onSaved }: {
 }) {
   const [quantity, setQuantity] = useState(String(mf.quantity_g))
   const [description, setDescription] = useState(mf.quantity_description || `${mf.quantity_g}g`)
+  const [notes, setNotes] = useState(mf.notes ?? '')
   const [loading, setLoading] = useState(false)
 
   const qty = parseFloat(quantity) || 0
@@ -550,8 +551,9 @@ function EditFoodModal({ mf, onClose, onSaved }: {
   async function handleSave() {
     if (!quantity || qty <= 0) return
     setLoading(true)
-    await updateMealFood(mf.id, qty, description || `${qty}g`)
-    onSaved({ ...mf, quantity_g: qty, quantity_description: description || `${qty}g` })
+    const notesVal = notes.trim() || null
+    await updateMealFood(mf.id, qty, description || `${qty}g`, notesVal)
+    onSaved({ ...mf, quantity_g: qty, quantity_description: description || `${qty}g`, notes: notesVal })
     setLoading(false)
     onClose()
   }
@@ -626,6 +628,16 @@ function EditFoodModal({ mf, onClose, onSaved }: {
                 <div className="text-[10px] text-gray-400">{m.label}</div>
               </div>
             ))}
+          </div>
+
+          <div>
+            <label className="form-label">Observação sobre o preparo (opcional)</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className="form-input"
+              placeholder="ex: Cozido sem sal, escorrer bem a gordura..."
+            />
           </div>
         </div>
 
@@ -704,6 +716,9 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
           </div>
           {mf.quantity_description && (
             <div className="text-[11px] text-gray-400 mt-0.5 pl-4">{mf.quantity_description}</div>
+          )}
+          {mf.notes && (
+            <div className="text-[10px] text-pgf-600 italic mt-0.5 pl-4">{mf.notes}</div>
           )}
         </div>
 
@@ -2132,12 +2147,17 @@ function PdfPreview({ patient, plan, meals, totals }: {
                     return (
                       <div key={mf.id}>
                         {/* Main food */}
-                        <div className={`grid items-center px-3 py-2 ${!isLast || mf.substitutes?.length ? 'border-b border-gray-100' : ''}`}
+                        <div className={`grid items-start px-3 py-2 ${!isLast || mf.substitutes?.length ? 'border-b border-gray-100' : ''}`}
                           style={{ gridTemplateColumns: '1fr 120px 50px 50px 50px 50px' }}>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xs font-semibold text-gray-800">{mf.food.name}</span>
-                            {(mf.food.source_label || mf.food.source) && mf.food.source !== 'custom' && (
-                              <span className="text-[8px] text-gray-400">({mf.food.source_label || mf.food.source})</span>
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs font-semibold text-gray-800">{mf.food.name}</span>
+                              {(mf.food.source_label || mf.food.source) && mf.food.source !== 'custom' && (
+                                <span className="text-[8px] text-gray-400">({mf.food.source_label || mf.food.source})</span>
+                              )}
+                            </div>
+                            {mf.notes && (
+                              <div className="text-[9px] text-pgf-600 italic mt-0.5">{mf.notes}</div>
                             )}
                           </div>
                           <div className="text-right text-xs text-gray-600">{mf.quantity_description || `${mf.quantity_g}g`}</div>

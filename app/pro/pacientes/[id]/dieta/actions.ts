@@ -102,7 +102,7 @@ export async function removeFoodFromMeal(mealFoodId: string) {
   await supabase.from('meal_foods').delete().eq('id', mealFoodId)
 }
 
-export async function updateMealFood(mealFoodId: string, quantityG: number, description?: string) {
+export async function updateMealFood(mealFoodId: string, quantityG: number, description?: string, notes?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
@@ -110,6 +110,7 @@ export async function updateMealFood(mealFoodId: string, quantityG: number, desc
   if (ownerId !== user.id) return
   const update: Record<string, unknown> = { quantity_g: quantityG }
   if (description !== undefined) update.quantity_description = description
+  if (notes !== undefined) update.notes = notes ?? null
   await supabase.from('meal_foods').update(update).eq('id', mealFoodId)
 }
 

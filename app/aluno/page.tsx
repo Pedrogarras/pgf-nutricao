@@ -296,18 +296,26 @@ export default async function AlunoPage({
                         food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }
                         quantity_g: number
                         quantity_description: string | null
+                        notes: string | null
                         substitutes?: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null; notes: string | null }[]
                       }) => (
                         <div key={mf.id}>
                           {/* Alimento principal */}
-                          <div className="flex items-center justify-between px-4 py-2.5"
+                          <div className="px-4 py-2.5"
                             style={{ borderBottom: mf.substitutes?.length ? undefined : '1px solid var(--dark-border)' }}>
-                            <span className="text-sm font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>
-                              {mf.food.name}
-                            </span>
-                            <span className="text-xs ml-3 text-right flex-shrink-0" style={{ color: 'rgba(197,205,240,0.55)' }}>
-                              {mf.quantity_description ?? `${mf.quantity_g}g`}
-                            </span>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>
+                                {mf.food.name}
+                              </span>
+                              <span className="text-xs ml-3 text-right flex-shrink-0" style={{ color: 'rgba(197,205,240,0.55)' }}>
+                                {mf.quantity_description ?? `${mf.quantity_g}g`}
+                              </span>
+                            </div>
+                            {mf.notes && (
+                              <div className="text-[11px] italic mt-0.5" style={{ color: 'rgba(147,180,250,0.7)' }}>
+                                {mf.notes}
+                              </div>
+                            )}
                           </div>
                           {/* Substitutos */}
                           {mf.substitutes?.map((sub, si) => (
