@@ -6,12 +6,19 @@ export async function GET(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
-  const month = request.nextUrl.searchParams.get('month') // YYYY-MM
+  const month     = request.nextUrl.searchParams.get('month')      // YYYY-MM
+  const patientId = request.nextUrl.searchParams.get('patient_id') // per-patient view
+  const limitStr  = request.nextUrl.searchParams.get('limit')
+
   let query = supabase
     .from('consultations')
     .select('*, patient:patients(id, full_name)')
     .eq('professional_id', user.id)
-    .order('scheduled_at')
+    .order('scheduled_at', { ascending: false })
+
+  if (patientId) {
+    query = query.eq('patient_id', patientId)
+  }
 
   if (month) {
     const start = `${month}-01T00:00:00`
@@ -21,9 +28,19 @@ export async function GET(request: NextRequest) {
     query = query.gte('scheduled_at', start).lt('scheduled_at', end)
   }
 
+  if (limitStr) {
+    query = query.limit(parseInt(limitStr))
+  }
+
   const { data, error } = await query
   if (error) return NextResponse.json({ consultations: [] }, { status: 500 })
-  return NextResponse.json({ consultations: data ?? [] })
+
+  // If filtering by patient, include patient name for breadcrumb
+  const patientName = patientId && data && data.length > 0
+    ? (data[0] as { patient?: { full_name: string } | null }).patient?.full_name ?? ''
+    : ''
+
+  return NextResponse.json({ consultations: data ?? [], patient_name: patientName })
 }
 
 export async function POST(request: NextRequest) {
