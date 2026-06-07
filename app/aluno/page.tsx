@@ -655,30 +655,26 @@ export default async function AlunoPage({
         )}
 
         {/* Quick shortcuts */}
-        <div className="grid grid-cols-3 gap-2">
-          <Link
-            href="/aluno/diario"
-            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
-          >
-            <div className="text-2xl">📔</div>
-            <div className="text-xs font-semibold text-white text-center">Diário</div>
+        <div className="grid grid-cols-4 gap-2">
+          <Link href="/aluno/diario" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+            <div className="text-xl">📔</div>
+            <div className="text-[10px] font-semibold text-white">Diário</div>
           </Link>
-          <Link
-            href="/aluno/agua"
-            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
-          >
-            <div className="text-2xl">💧</div>
-            <div className="text-xs font-semibold text-white text-center">Água</div>
+          <Link href="/aluno/agua" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+            <div className="text-xl">💧</div>
+            <div className="text-[10px] font-semibold text-white">Água</div>
           </Link>
-          <Link
-            href="/aluno/suplementos"
-            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
-          >
-            <div className="text-2xl">💊</div>
-            <div className="text-xs font-semibold text-white text-center">Suplementos</div>
+          <Link href="/aluno/evolucao" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+            <div className="text-xl">📈</div>
+            <div className="text-[10px] font-semibold text-white">Evolução</div>
+          </Link>
+          <Link href="/aluno/suplementos" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+            <div className="text-xl">💊</div>
+            <div className="text-[10px] font-semibold text-white">Suplementos</div>
           </Link>
         </div>
 
