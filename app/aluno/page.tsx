@@ -947,6 +947,10 @@ export default async function AlunoPage({
               hint: 'Registrar treino', dot: null,
             },
             {
+              href: '/aluno/treino/timer', icon: '⏱', label: 'Timer',
+              hint: 'Descanso entre séries', dot: null,
+            },
+            {
               href: '/aluno/notificacoes', icon: '🔔', label: 'Avisos',
               hint: 'Notificações', dot: null,
             },

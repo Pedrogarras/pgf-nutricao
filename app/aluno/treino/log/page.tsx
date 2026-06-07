@@ -360,14 +360,23 @@ export default function TreinoLogPage() {
             {planTitle || 'Seu histórico de atividade física'}
           </p>
         </div>
-        {/* Quick log button for today without a specific day */}
-        <button
-          onClick={() => setModal({ day: null, date: today, existingLog: null })}
-          className="text-xs font-bold px-3 py-1.5 rounded-xl"
-          style={{ background: 'rgba(37,99,235,0.2)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
-        >
-          + Treino livre
-        </button>
+        <div className="flex gap-2">
+          <Link
+            href="/aluno/treino/timer"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: 'rgba(251,191,36,0.12)', color: '#FCD34D', border: '1px solid rgba(251,191,36,0.25)' }}
+          >
+            ⏱ Timer
+          </Link>
+          {/* Quick log button for today without a specific day */}
+          <button
+            onClick={() => setModal({ day: null, date: today, existingLog: null })}
+            className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: 'rgba(37,99,235,0.2)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
+          >
+            + Livre
+          </button>
+        </div>
       </div>
 
       <div className="px-4 pt-5 max-w-lg mx-auto">

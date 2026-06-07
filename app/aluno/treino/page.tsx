@@ -120,11 +120,18 @@ export default function AlunoTreinoPage() {
           <span style={{ color: 'rgba(255,255,255,0.2)' }}>/</span>
           <h1 className="text-base font-bold text-white">🏋️ Meu Treino</h1>
         </div>
-        <Link href="/aluno/treino/log"
-          className="text-xs font-bold px-3 py-1.5 rounded-xl"
-          style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.25)' }}>
-          ✅ Registrar
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/aluno/treino/timer"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: 'rgba(251,191,36,0.12)', color: '#FCD34D', border: '1px solid rgba(251,191,36,0.25)' }}>
+            ⏱
+          </Link>
+          <Link href="/aluno/treino/log"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: 'rgba(74,222,128,0.12)', color: '#4ADE80', border: '1px solid rgba(74,222,128,0.25)' }}>
+            ✅ Registrar
+          </Link>
+        </div>
       </div>
 
       <div className="p-4 max-w-2xl mx-auto">
