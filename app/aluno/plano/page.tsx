@@ -6,36 +6,40 @@ import { createClient } from '@/lib/supabase/client'
 interface MealFood {
   id: string
   quantity_g: number
-  foods: {
+  quantity_description: string | null
+  notes: string | null
+  sort_order: number
+  food: {
     name: string
     kcal: number
     protein_g: number
     carbs_g: number
     fat_g: number
-    portion_g: number | null
+    fiber_g: number | null
+    portion_g: number
     portion_description: string | null
   } | null
 }
 
 interface Meal {
   id: string
-  meal_name: string
-  meal_time: string | null
-  order: number | null
+  name: string
+  time_start: string | null
+  emoji: string | null
+  sort_order: number
   notes: string | null
   meal_foods: MealFood[]
-  // computed
   totals?: { kcal: number; protein: number; carbs: number; fat: number }
 }
 
 interface DietPlan {
   id: string
-  name: string
-  description: string | null
-  goal_kcal: number | null
-  goal_protein_g: number | null
-  goal_carbs_g: number | null
-  goal_fat_g: number | null
+  title: string
+  notes: string | null
+  kcal_goal: number | null
+  protein_goal_g: number | null
+  carbs_goal_g: number | null
+  fat_goal_g: number | null
   updated_at: string
 }
 
@@ -54,12 +58,12 @@ const MEAL_EMOJIS: Record<string, string> = {
 function computeTotals(meal: Meal) {
   let kcal = 0, protein = 0, carbs = 0, fat = 0
   for (const mf of meal.meal_foods) {
-    if (!mf.foods) continue
-    const ratio = mf.quantity_g / (mf.foods.portion_g || 100)
-    kcal += mf.foods.kcal * ratio
-    protein += mf.foods.protein_g * ratio
-    carbs += mf.foods.carbs_g * ratio
-    fat += mf.foods.fat_g * ratio
+    if (!mf.food) continue
+    const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+    kcal += mf.food.kcal * ratio
+    protein += mf.food.protein_g * ratio
+    carbs += mf.food.carbs_g * ratio
+    fat += mf.food.fat_g * ratio
   }
   return {
     kcal: Math.round(kcal),
@@ -85,7 +89,7 @@ export default function AlunoPlanoPage() {
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
+      if (!user) { setNoPlan(true); setLoading(false); return }
 
       const { data: patient } = await supabase
         .from('patients')
@@ -96,33 +100,46 @@ export default function AlunoPlanoPage() {
 
       const { data: planData } = await supabase
         .from('diet_plans')
-        .select('id, name, description, goal_kcal, goal_protein_g, goal_carbs_g, goal_fat_g, updated_at')
+        .select(`
+          id, title, notes, kcal_goal, protein_goal_g, carbs_goal_g, fat_goal_g, updated_at,
+          meals(
+            id, name, time_start, emoji, sort_order, notes,
+            meal_foods(
+              id, quantity_g, quantity_description, notes, sort_order,
+              food:foods(name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g, portion_description)
+            )
+          )
+        `)
         .eq('patient_id', patient.id)
         .eq('active', true)
-        .eq('published', true)
-        .order('updated_at', { ascending: false })
+        .not('published_at', 'is', null)
+        .order('published_at', { ascending: false })
         .limit(1)
         .single()
 
       if (!planData) { setNoPlan(true); setLoading(false); return }
-      setPlan(planData)
 
-      const { data: mealsData } = await supabase
-        .from('diet_plan_meals')
-        .select(`
-          id, meal_name, meal_time, order, notes,
-          meal_foods(
-            id, quantity_g,
-            foods(name, kcal, protein_g, carbs_g, fat_g, portion_g, portion_description)
-          )
-        `)
-        .eq('plan_id', planData.id)
-        .order('order', { ascending: true })
+      setPlan({
+        id: planData.id,
+        title: planData.title,
+        notes: planData.notes,
+        kcal_goal: planData.kcal_goal,
+        protein_goal_g: planData.protein_goal_g,
+        carbs_goal_g: planData.carbs_goal_g,
+        fat_goal_g: planData.fat_goal_g,
+        updated_at: planData.updated_at,
+      })
 
-      const withTotals: Meal[] = (mealsData ?? []).map((m: Meal) => ({
-        ...m,
-        totals: computeTotals(m),
-      }))
+      const withTotals: Meal[] = ((planData.meals ?? []) as Meal[])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(m => ({
+          ...m,
+          meal_foods: (m.meal_foods ?? []).sort((a, b) => a.sort_order - b.sort_order),
+          totals: computeTotals({
+            ...m,
+            meal_foods: (m.meal_foods ?? []),
+          }),
+        }))
       setMeals(withTotals)
 
       // Auto-expand first meal
@@ -133,7 +150,6 @@ export default function AlunoPlanoPage() {
     setLoading(false)
   }
 
-  // Grand totals from meals (if no goal set in plan)
   const grandTotals = meals.reduce(
     (acc, m) => ({
       kcal: acc.kcal + (m.totals?.kcal ?? 0),
@@ -144,10 +160,10 @@ export default function AlunoPlanoPage() {
     { kcal: 0, protein: 0, carbs: 0, fat: 0 }
   )
 
-  const goalKcal = plan?.goal_kcal ?? grandTotals.kcal
-  const goalProtein = plan?.goal_protein_g ?? grandTotals.protein
-  const goalCarbs = plan?.goal_carbs_g ?? grandTotals.carbs
-  const goalFat = plan?.goal_fat_g ?? grandTotals.fat
+  const goalKcal = plan?.kcal_goal ?? grandTotals.kcal
+  const goalProtein = plan?.protein_goal_g ?? grandTotals.protein
+  const goalCarbs = plan?.carbs_goal_g ?? grandTotals.carbs
+  const goalFat = plan?.fat_goal_g ?? grandTotals.fat
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--dark-bg)' }}>
@@ -197,9 +213,9 @@ export default function AlunoPlanoPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <div className="text-white font-bold text-base">{plan!.name}</div>
-                  {plan!.description && (
-                    <div className="text-white/50 text-xs mt-0.5">{plan!.description}</div>
+                  <div className="text-white font-bold text-base">{plan!.title}</div>
+                  {plan!.notes && (
+                    <div className="text-white/50 text-xs mt-0.5 line-clamp-2">{plan!.notes}</div>
                   )}
                 </div>
                 <div className="text-xs text-white/30 text-right">
@@ -211,14 +227,14 @@ export default function AlunoPlanoPage() {
               {/* Daily targets */}
               <div className="grid grid-cols-4 gap-2 text-center">
                 {[
-                  { label: 'Kcal', value: Math.round(goalKcal), color: 'text-white' },
-                  { label: 'Prot', value: `${Math.round(goalProtein)}g`, color: 'text-blue-300' },
-                  { label: 'Carb', value: `${Math.round(goalCarbs)}g`, color: 'text-amber-300' },
-                  { label: 'Gord', value: `${Math.round(goalFat)}g`, color: 'text-red-300' },
+                  { label: 'Kcal/dia', value: Math.round(goalKcal), color: 'text-white' },
+                  { label: 'Proteína', value: `${Math.round(goalProtein)}g`, color: 'text-blue-300' },
+                  { label: 'Carboidrato', value: `${Math.round(goalCarbs)}g`, color: 'text-amber-300' },
+                  { label: 'Gordura', value: `${Math.round(goalFat)}g`, color: 'text-red-300' },
                 ].map(m => (
                   <div key={m.label} className="rounded-xl py-2" style={{ background: 'rgba(0,0,0,0.25)' }}>
                     <div className={`text-base font-black ${m.color}`}>{m.value}</div>
-                    <div className="text-[10px] text-white/30 uppercase tracking-wide">{m.label}/dia</div>
+                    <div className="text-[10px] text-white/30 uppercase tracking-wide">{m.label}</div>
                   </div>
                 ))}
               </div>
@@ -233,38 +249,37 @@ export default function AlunoPlanoPage() {
                     <div className="flex rounded-full overflow-hidden h-2">
                       <div style={{ width: `${pPct}%`, background: '#3B82F6' }} />
                       <div style={{ width: `${cPct}%`, background: '#F59E0B' }} />
-                      <div style={{ width: `${fPct}%`, background: '#EF4444' }} />
+                      <div style={{ width: `${Math.min(fPct, 100-pPct-cPct)}%`, background: '#EF4444' }} />
                     </div>
                     <div className="flex gap-4 mt-1.5 text-[10px]">
-                      <span className="text-blue-400">● Proteína {pPct}%</span>
-                      <span className="text-amber-400">● Carboidrato {cPct}%</span>
-                      <span className="text-red-400">● Gordura {fPct}%</span>
+                      <span className="text-blue-400">● Prot {pPct}%</span>
+                      <span className="text-amber-400">● Carb {cPct}%</span>
+                      <span className="text-red-400">● Gord {fPct}%</span>
                     </div>
                   </div>
                 )
               })()}
             </div>
 
-            {/* Meals count badge */}
+            {/* Meals count + collapse all */}
             <div className="flex items-center justify-between mb-3 px-1">
               <div className="text-white/50 text-xs font-semibold uppercase tracking-wide">
                 {meals.length} refeição{meals.length !== 1 ? 'ões' : ''}
               </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setExpandedId(null)}
-                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
-                >
-                  Recolher tudo
-                </button>
-              </div>
+              <button
+                onClick={() => setExpandedId(null)}
+                className="text-xs text-white/30 hover:text-white/60 transition-colors"
+              >
+                Recolher tudo
+              </button>
             </div>
 
             {/* Meals list */}
             <div className="space-y-2">
-              {meals.map((meal, idx) => {
+              {meals.map(meal => {
                 const isOpen = expandedId === meal.id
                 const t = meal.totals!
+                const emoji = meal.emoji ?? MEAL_EMOJIS[meal.name] ?? '🍽️'
                 return (
                   <div
                     key={meal.id}
@@ -281,13 +296,13 @@ export default function AlunoPlanoPage() {
                           className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
                           style={{ background: isOpen ? 'rgba(37,99,235,0.2)' : 'rgba(255,255,255,0.06)' }}
                         >
-                          {MEAL_EMOJIS[meal.meal_name] ?? '🍽️'}
+                          {emoji}
                         </div>
                         <div className="text-left">
-                          <div className="font-semibold text-white text-sm">{meal.meal_name}</div>
+                          <div className="font-semibold text-white text-sm">{meal.name}</div>
                           <div className="text-[11px] text-white/40">
-                            {meal.meal_time?.slice(0, 5)}
-                            {meal.meal_time && meal.meal_foods.length > 0 && ' · '}
+                            {meal.time_start}
+                            {meal.time_start && meal.meal_foods.length > 0 && ' · '}
                             {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
                           </div>
                         </div>
@@ -305,21 +320,16 @@ export default function AlunoPlanoPage() {
 
                     {/* Expanded food list */}
                     {isOpen && (
-                      <div
-                        className="border-t"
-                        style={{ borderColor: 'rgba(255,255,255,0.06)' }}
-                      >
+                      <div className="border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
                         {meal.meal_foods.length === 0 ? (
                           <div className="px-4 py-4 text-white/30 text-sm text-center">Nenhum alimento cadastrado</div>
                         ) : (
                           <div className="px-4 py-3 space-y-2">
-                            {meal.meal_foods.map((mf, i) => {
-                              if (!mf.foods) return null
-                              const ratio = mf.quantity_g / (mf.foods.portion_g || 100)
-                              const kcal = Math.round(mf.foods.kcal * ratio)
-                              const desc = mf.foods.portion_description
-                                ? `${Math.round(ratio * 10) / 10} ${mf.foods.portion_description} (${mf.quantity_g}g)`
-                                : `${mf.quantity_g}g`
+                            {meal.meal_foods.map(mf => {
+                              if (!mf.food) return null
+                              const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+                              const kcal = Math.round(mf.food.kcal * ratio)
+                              const desc = mf.quantity_description ?? `${mf.quantity_g}g`
                               return (
                                 <div
                                   key={mf.id}
@@ -327,15 +337,16 @@ export default function AlunoPlanoPage() {
                                   style={{ background: 'rgba(255,255,255,0.04)' }}
                                 >
                                   <div>
-                                    <div className="text-white/90 text-sm font-medium">{mf.foods.name}</div>
+                                    <div className="text-white/90 text-sm font-medium">{mf.food.name}</div>
                                     <div className="text-white/35 text-xs mt-0.5">{desc}</div>
+                                    {mf.notes && <div className="text-white/25 text-xs italic mt-0.5">{mf.notes}</div>}
                                   </div>
                                   <div className="text-right flex-shrink-0 ml-3">
                                     <div className="text-white/80 text-sm font-bold">{kcal} kcal</div>
                                     <div className="text-[10px] text-white/30">
-                                      P{Math.round(mf.foods.protein_g * ratio)}g
-                                      {' '}C{Math.round(mf.foods.carbs_g * ratio)}g
-                                      {' '}G{Math.round(mf.foods.fat_g * ratio)}g
+                                      P{Math.round(mf.food.protein_g * ratio)}g
+                                      {' '}C{Math.round(mf.food.carbs_g * ratio)}g
+                                      {' '}G{Math.round(mf.food.fat_g * ratio)}g
                                     </div>
                                   </div>
                                 </div>
@@ -375,14 +386,12 @@ export default function AlunoPlanoPage() {
               })}
             </div>
 
-            {/* Daily totals summary at bottom */}
+            {/* Daily totals summary */}
             <div
               className="mt-4 rounded-2xl p-4"
               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
-              <div className="text-xs text-white/40 font-semibold uppercase tracking-wide mb-3">
-                Total diário do plano
-              </div>
+              <div className="text-xs text-white/40 font-semibold uppercase tracking-wide mb-3">Total diário do plano</div>
               <div className="grid grid-cols-4 gap-3 text-center">
                 {[
                   { label: 'Kcal', value: Math.round(grandTotals.kcal), color: 'text-white' },
@@ -405,7 +414,7 @@ export default function AlunoPlanoPage() {
                 className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm text-white transition-all"
                 style={{ background: 'rgba(37,99,235,0.15)', border: '1px solid rgba(37,99,235,0.3)' }}
               >
-                📔 Ir para o Diário
+                📔 Registrar no Diário
               </Link>
             </div>
           </>

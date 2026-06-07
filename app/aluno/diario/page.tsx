@@ -40,7 +40,7 @@ interface FoodSearchResult {
 
 interface PlanMealFood {
   quantity_g: number
-  foods: {
+  food: {
     name: string
     kcal: number
     protein_g: number
@@ -52,9 +52,10 @@ interface PlanMealFood {
 
 interface PlanMeal {
   id: string
-  meal_name: string
-  meal_time: string | null
-  order: number | null
+  name: string
+  time_start: string | null
+  emoji: string | null
+  sort_order: number | null
   meal_foods: PlanMealFood[]
 }
 
@@ -223,35 +224,34 @@ export default function AlunoDiarioPage() {
         .single()
       if (!patient) { setPlanLoading(false); return }
 
-      // Get active published plan
-      const { data: plan } = await supabase
+      // Get active published plan with meals and foods
+      const { data: planData } = await supabase
         .from('diet_plans')
-        .select('id')
-        .eq('patient_id', patient.id)
-        .eq('active', true)
-        .eq('published', true)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
-      if (!plan) { setPlanLoading(false); return }
-
-      // Get meals with foods
-      const { data: meals } = await supabase
-        .from('diet_plan_meals')
         .select(`
-          id, meal_name, meal_time, order,
-          meal_foods(
-            quantity_g,
-            foods(name, kcal, protein_g, carbs_g, fat_g, portion_g)
+          id,
+          meals(
+            id, name, time_start, emoji, sort_order,
+            meal_foods(
+              quantity_g,
+              food:foods(name, kcal, protein_g, carbs_g, fat_g, portion_g)
+            )
           )
         `)
-        .eq('plan_id', plan.id)
-        .order('order', { ascending: true })
+        .eq('patient_id', patient.id)
+        .eq('active', true)
+        .not('published_at', 'is', null)
+        .order('published_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (!planData) { setPlanLoading(false); return }
 
-      setPlanMeals((meals as PlanMeal[]) ?? [])
+      const meals: PlanMeal[] = ((planData.meals ?? []) as PlanMeal[])
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+
+      setPlanMeals(meals)
       // Pre-select all meals
-      if (meals) {
-        setSelectedPlanMealIds(new Set(meals.map((m: PlanMeal) => m.id)))
+      if (meals.length > 0) {
+        setSelectedPlanMealIds(new Set(meals.map(m => m.id)))
       }
     } catch {
       // ignore errors gracefully
@@ -271,12 +271,12 @@ export default function AlunoDiarioPage() {
   function computeMealTotals(meal: PlanMeal) {
     let kcal = 0, protein = 0, carbs = 0, fat = 0
     for (const mf of meal.meal_foods) {
-      if (!mf.foods) continue
-      const ratio = mf.quantity_g / (mf.foods.portion_g || 100)
-      kcal += mf.foods.kcal * ratio
-      protein += mf.foods.protein_g * ratio
-      carbs += mf.foods.carbs_g * ratio
-      fat += mf.foods.fat_g * ratio
+      if (!mf.food) continue
+      const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+      kcal += mf.food.kcal * ratio
+      protein += mf.food.protein_g * ratio
+      carbs += mf.food.carbs_g * ratio
+      fat += mf.food.fat_g * ratio
     }
     return {
       kcal: Math.round(kcal * 10) / 10,
@@ -295,9 +295,9 @@ export default function AlunoDiarioPage() {
     for (const meal of mealsToLog) {
       const totals = computeMealTotals(meal)
       const foods: DiaryFood[] = meal.meal_foods
-        .filter(mf => mf.foods)
+        .filter(mf => mf.food)
         .map(mf => {
-          const f = mf.foods!
+          const f = mf.food!
           const ratio = mf.quantity_g / (f.portion_g || 100)
           return {
             food_name: f.name,
@@ -315,8 +315,8 @@ export default function AlunoDiarioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           logged_at: selectedDate,
-          meal_name: meal.meal_name,
-          meal_time: meal.meal_time || null,
+          meal_name: meal.name,
+          meal_time: meal.time_start || null,
           foods,
           total_kcal: totals.kcal,
           total_protein_g: totals.protein,
@@ -680,6 +680,7 @@ export default function AlunoDiarioPage() {
                   {planMeals.map(meal => {
                     const totals = computeMealTotals(meal)
                     const selected = selectedPlanMealIds.has(meal.id)
+                    const emoji = meal.emoji ?? MEAL_EMOJIS[meal.name] ?? '🍽️'
                     return (
                       <button
                         key={meal.id}
@@ -705,19 +706,19 @@ export default function AlunoDiarioPage() {
                           {/* Meal info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-base">{MEAL_EMOJIS[meal.meal_name] ?? '🍽️'}</span>
-                              <span className="font-bold text-sm text-gray-900">{meal.meal_name}</span>
-                              {meal.meal_time && (
-                                <span className="text-xs text-gray-400">{meal.meal_time.slice(0, 5)}</span>
+                              <span className="text-base">{emoji}</span>
+                              <span className="font-bold text-sm text-gray-900">{meal.name}</span>
+                              {meal.time_start && (
+                                <span className="text-xs text-gray-400">{meal.time_start.slice(0, 5)}</span>
                               )}
                             </div>
 
                             {/* Foods list */}
                             {meal.meal_foods.length > 0 && (
                               <div className="mt-1.5 space-y-0.5">
-                                {meal.meal_foods.filter(mf => mf.foods).slice(0, 4).map((mf, i) => (
+                                {meal.meal_foods.filter(mf => mf.food).slice(0, 4).map((mf, i) => (
                                   <div key={i} className="text-xs text-gray-500">
-                                    {mf.foods!.name} · {mf.quantity_g}g
+                                    {mf.food!.name} · {mf.quantity_g}g
                                   </div>
                                 ))}
                                 {meal.meal_foods.length > 4 && (

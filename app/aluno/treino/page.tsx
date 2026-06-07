@@ -27,7 +27,7 @@ interface WorkoutDay {
 interface WorkoutPlan {
   id: string
   title: string | null
-  description: string | null
+  notes: string | null
   published_at: string | null
   workout_days: WorkoutDay[]
 }
@@ -58,7 +58,7 @@ export default function AlunoTreinoPage() {
       const { data } = await supabase
         .from('workout_plans')
         .select(`
-          id, title, description, published_at,
+          id, title, notes, published_at,
           workout_days(
             id, name, sort_order,
             workout_exercises(
@@ -147,8 +147,8 @@ export default function AlunoTreinoPage() {
               <div className="flex items-start justify-between mb-3">
                 <div>
                   <div className="text-white font-bold text-base">{plan.title ?? 'Plano de Treino'}</div>
-                  {plan.description && (
-                    <div className="text-white/50 text-xs mt-0.5">{plan.description}</div>
+                  {plan.notes && (
+                    <div className="text-white/50 text-xs mt-0.5">{plan.notes}</div>
                   )}
                 </div>
                 {plan.published_at && (
