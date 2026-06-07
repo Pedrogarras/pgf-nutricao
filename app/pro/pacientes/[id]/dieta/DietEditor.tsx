@@ -361,9 +361,9 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
 }
 
 // ===================== EDIT SUBSTITUTE MODAL =====================
-function EditSubstituteModal({ sub, mainFood, onClose, onSaved }: {
+function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
   sub: LocalSubstitute
-  mainFood: LocalFood
+  mainMf: LocalMealFood
   onClose: () => void
   onSaved: (updated: LocalSubstitute) => void
 }) {
@@ -377,7 +377,8 @@ function EditSubstituteModal({ sub, mainFood, onClose, onSaved }: {
     return { kcal: r(m.kcal), protein: r(m.protein), carbs: r(m.carbs), fat: r(m.fat) }
   })()
 
-  const mainKcal = r(calcMacros(mainFood.quantity_g, mainFood).kcal)
+  const mainFood = mainMf.food
+  const mainKcal = r(calcMacros(mainMf.quantity_g, mainFood).kcal)
   const diff = Math.abs(macros.kcal - mainKcal)
   const kcalMatch = diff < 30
 
@@ -419,7 +420,7 @@ function EditSubstituteModal({ sub, mainFood, onClose, onSaved }: {
           {/* Referência: alimento principal */}
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs text-gray-500">
             <span className="font-semibold text-gray-700">Alimento principal: </span>
-            {mainFood.name} · {mainFood.quantity_g ?? '?'}g · {mainKcal} kcal
+            {mainFood.name} · {mainMf.quantity_g}g · {mainKcal} kcal
           </div>
 
           {/* Referência base do substituto */}
@@ -824,7 +825,7 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
       {editingSub && (
         <EditSubstituteModal
           sub={editingSub}
-          mainFood={mf.food}
+          mainMf={mf}
           onClose={() => setEditingSub(null)}
           onSaved={updated => { onSubUpdated(mf.id, updated); setEditingSub(null) }}
         />

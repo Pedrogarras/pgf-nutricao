@@ -22,7 +22,6 @@ export default async function AlunoPage({
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="text-center">
-          <div className="text-4xl mb-3">⚠️</div>
           <div className="font-semibold text-white">Perfil não encontrado</div>
           <div className="text-sm mt-1" style={{ color: 'rgba(226,232,248,0.5)' }}>Contate seu nutricionista.</div>
           <form action={logout} className="mt-4">
@@ -269,7 +268,6 @@ export default async function AlunoPage({
                   {meal.notes && (
                     <div className="px-4 py-3" style={{ background: 'rgba(90,111,204,0.08)', borderTop: '1px solid rgba(90,111,204,0.2)' }}>
                       <div className="flex items-center gap-1.5 mb-1.5">
-                        <span>📋</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#9BAAE6' }}>
                           Orientações
                         </span>
@@ -285,7 +283,7 @@ export default async function AlunoPage({
 
             {selectedPlan.notes && (
               <div className="rounded-xl px-4 py-3" style={{ background: 'rgba(90,111,204,0.12)', border: '1px solid rgba(90,111,204,0.25)' }}>
-                <div className="text-xs font-bold mb-1" style={{ color: '#9BAAE6' }}>📋 Orientações</div>
+                <div className="text-xs font-bold mb-1" style={{ color: '#9BAAE6' }}>Orientações</div>
                 <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,248,0.7)' }}>{selectedPlan.notes}</div>
               </div>
             )}
@@ -293,13 +291,12 @@ export default async function AlunoPage({
             <button onClick={() => window.print()}
               className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
               style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)', color: '#9BAAE6' }}>
-              📄 Baixar Plano em PDF
+              Baixar Plano em PDF
             </button>
           </>
         ) : (
           <div className="rounded-2xl p-6 text-center"
             style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="text-3xl mb-2">🥗</div>
             <div className="font-semibold" style={{ color: 'rgba(226,232,248,0.7)' }}>Plano alimentar ainda não publicado</div>
             <div className="text-sm mt-1" style={{ color: 'rgba(197,205,240,0.4)' }}>Seu nutricionista irá liberar em breve.</div>
           </div>
@@ -314,7 +311,7 @@ export default async function AlunoPage({
                 style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
                 <div className="px-4 py-3 font-bold text-sm"
                   style={{ background: 'rgba(90,111,204,0.15)', color: '#C5CDF0', borderBottom: '1px solid var(--dark-border)' }}>
-                  💪 {day.name}
+                  {day.name}
                 </div>
                 {day.workout_exercises.map(we => (
                   <div key={we.id} className="px-4 py-3" style={{ borderBottom: '1px solid var(--dark-border)' }}>
@@ -333,7 +330,7 @@ export default async function AlunoPage({
                     {we.exercise.video_url && (
                       <a href={we.exercise.video_url} target="_blank" rel="noopener noreferrer"
                         className="mt-2 inline-flex items-center gap-1 text-xs underline" style={{ color: '#9BAAE6' }}>
-                        🎥 Ver vídeo
+                        Ver vídeo
                       </a>
                     )}
                     {we.notes && (
