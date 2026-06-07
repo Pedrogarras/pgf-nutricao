@@ -1878,38 +1878,71 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
 function PdfPreview({ patient, plan, meals, totals }: {
   patient: Patient; plan: LocalPlan; meals: LocalMeal[]; totals: ReturnType<typeof planTotal>
 }) {
+  const anamnesis = plan.anamnesis as Record<string, string | null> | null
+  const age = patient.date_of_birth
+    ? Math.floor((Date.now() - new Date(patient.date_of_birth + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+    : null
+
   return (
     <div>
-      <div className="flex justify-end gap-2 mb-4 no-print">
-        <button onClick={() => window.print()} className="btn btn-primary">Imprimir / Salvar PDF</button>
+      <div className="flex items-center justify-between gap-2 mb-4 no-print">
+        <div className="text-sm text-gray-500">
+          Pré-visualização — clique em <strong>Imprimir</strong> para gerar o PDF.
+        </div>
+        <button
+          onClick={() => window.print()}
+          className="btn btn-primary flex items-center gap-2"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          Imprimir / Salvar PDF
+        </button>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-lg max-w-3xl mx-auto" id="pdf-content">
         {/* Header */}
-        <div className="bg-pgf-600 px-8 py-6 flex items-center justify-between">
+        <div className="bg-pgf-600 px-8 py-5 flex items-start justify-between">
           <div className="text-white">
             <div className="text-4xl font-black italic tracking-tighter leading-none">PGF</div>
             <div className="text-xs font-bold tracking-[2px] uppercase mt-1 opacity-90">Pedro Garrastazu Frey</div>
             <div className="text-xs opacity-50">Nutricionista · CRN-2 00000</div>
           </div>
           <div className="text-white text-right">
-            <div className="text-lg font-bold">{patient.full_name}</div>
-            <div className="text-xs opacity-70 mt-0.5">
-              {patient.gender === 'F' ? 'Feminino' : 'Masculino'} · {patient.weight_kg ?? '—'}kg · {patient.height_cm ?? '—'}cm
+            <div className="text-xl font-bold leading-tight">{patient.full_name}</div>
+            <div className="text-xs opacity-70 mt-0.5 space-x-2">
+              {patient.gender && <span>{patient.gender === 'F' ? 'Feminino' : 'Masculino'}</span>}
+              {age != null && <span>· {age} anos</span>}
+              {patient.weight_kg && <span>· {patient.weight_kg} kg</span>}
+              {patient.height_cm && <span>· {patient.height_cm} cm</span>}
             </div>
-            <div className="text-xs opacity-50">Emitido em {new Date().toLocaleDateString('pt-BR')}</div>
+            {patient.goal && <div className="text-xs opacity-60 mt-0.5">Meta: {patient.goal}</div>}
+            <div className="text-xs opacity-40 mt-1">{plan.title ?? 'Plano Alimentar'} · Emitido {new Date().toLocaleDateString('pt-BR')}</div>
           </div>
         </div>
 
-        <div className="px-8 py-6">
+        <div className="px-8 py-5">
+          {/* Alertas: alergias/restrições do paciente */}
+          {(anamnesis?.allergies || anamnesis?.dislikes) && (
+            <div className="mb-4 p-3 rounded-lg border border-red-200 bg-red-50">
+              <div className="text-[9px] font-bold text-red-600 uppercase tracking-widest mb-1">Atenção — Restrições</div>
+              {anamnesis.allergies && (
+                <div className="text-xs text-red-700"><strong>Alergias/Intolerâncias:</strong> {anamnesis.allergies}</div>
+              )}
+              {anamnesis.dislikes && (
+                <div className="text-xs text-red-600 mt-0.5"><strong>Não gosta:</strong> {anamnesis.dislikes}</div>
+              )}
+            </div>
+          )}
+
           {/* Metas diárias */}
           <div className="text-[10px] font-bold text-pgf-600 uppercase tracking-widest border-b-2 border-pgf-600 pb-1 mb-3">Metas Diárias</div>
-          <div className="grid grid-cols-4 gap-2 mb-6">
+          <div className="grid grid-cols-4 gap-2 mb-5">
             {[
-              { l: 'Calorias', v: `${r(totals.kcal)} kcal`, c: 'text-gray-900' },
-              { l: 'Proteína', v: `${r(totals.protein)}g`, c: 'text-blue-600' },
-              { l: 'Carboidrato', v: `${r(totals.carbs)}g`, c: 'text-amber-600' },
-              { l: 'Gordura', v: `${r(totals.fat)}g`, c: 'text-red-500' },
+              { l: 'Calorias', v: plan.kcal_goal ? `${plan.kcal_goal} kcal` : `${r(totals.kcal)} kcal`, c: 'text-gray-900' },
+              { l: 'Proteína', v: plan.protein_goal_g ? `${plan.protein_goal_g}g` : `${r(totals.protein)}g`, c: 'text-blue-600' },
+              { l: 'Carboidrato', v: plan.carbs_goal_g ? `${plan.carbs_goal_g}g` : `${r(totals.carbs)}g`, c: 'text-amber-600' },
+              { l: 'Gordura', v: plan.fat_goal_g ? `${plan.fat_goal_g}g` : `${r(totals.fat)}g`, c: 'text-red-500' },
             ].map(m => (
               <div key={m.l} className="border border-gray-200 rounded-lg p-2.5 text-center">
                 <div className="text-[9px] text-gray-400 uppercase tracking-wide">{m.l}</div>
@@ -2015,20 +2048,34 @@ function PdfPreview({ patient, plan, meals, totals }: {
             )
           })}
 
-          {/* Orientações */}
+          {/* Orientações gerais do plano */}
           {plan.notes && (
             <>
-              <div className="text-[10px] font-bold text-pgf-600 uppercase tracking-widest border-b-2 border-pgf-600 pb-1 mb-3 mt-2">Orientações</div>
-              <p className="text-xs text-gray-600 leading-relaxed">{plan.notes}</p>
+              <div className="text-[10px] font-bold text-pgf-600 uppercase tracking-widest border-b-2 border-pgf-600 pb-1 mb-3 mt-3">Orientações Gerais</div>
+              <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-line">{plan.notes}</p>
             </>
           )}
+
+          {/* Suplementação (da anamnese) */}
+          {anamnesis?.supplements && (
+            <>
+              <div className="text-[10px] font-bold text-pgf-600 uppercase tracking-widest border-b-2 border-pgf-600 pb-1 mb-2 mt-3">Suplementação</div>
+              <p className="text-xs text-gray-600 leading-relaxed">{anamnesis.supplements}</p>
+            </>
+          )}
+
+          {/* Observações finais */}
+          <div className="mt-5 pt-4 border-t border-gray-100 text-[10px] text-gray-400 leading-relaxed">
+            Os valores nutricionais são estimativas calculadas com base na Tabela TACO/IBGE e podem variar conforme a marca, preparo e variação dos alimentos.
+            Em caso de dúvida, consulte seu nutricionista.
+          </div>
         </div>
 
         {/* Footer */}
         <div className="bg-pgf-50 px-8 py-3 flex justify-between items-center border-t border-pgf-100">
-          <div className="text-[10px] text-gray-400">pedro_frey@hotmail.com</div>
-          <div className="text-[10px] font-bold text-pgf-600 tracking-wider">PGF · PEDRO GARRASTAZU FREY · Nutricionista</div>
-          <div className="text-[10px] text-gray-400">Tabela: TACO / IBGE</div>
+          <div className="text-[10px] text-gray-400">pedro_frey@hotmail.com · @pgf.nutri</div>
+          <div className="text-[10px] font-bold text-pgf-600 tracking-wider">PEDRO GARRASTAZU FREY · Nutricionista</div>
+          <div className="text-[10px] text-gray-400">TACO / IBGE</div>
         </div>
       </div>
     </div>

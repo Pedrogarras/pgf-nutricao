@@ -289,15 +289,34 @@
 
 /* Print styles — PDF gerado via CSS */
 @media print {
-  .no-print { display: none !important; }
-  .print-only { display: block !important; }
-  body { background: white; }
-  .card { box-shadow: none; border: 1px solid #e5e7eb; }
-  /* Reset dark theme for print */
-  .dark-theme, .dark-theme * {
-    background-color: white !important;
-    color: black !important;
-    border-color: #e5e7eb !important;
+  /* Use visibility trick so nested content prints correctly */
+  body * { visibility: hidden !important; }
+  #pdf-content, #pdf-content * { visibility: visible !important; }
+  #pdf-content {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  .no-print { visibility: hidden !important; }
+  .print-only { visibility: visible !important; display: block !important; }
+
+  body {
+    background: white !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  @page {
+    margin: 10mm 12mm;
+    size: A4 portrait;
   }
 }
 
