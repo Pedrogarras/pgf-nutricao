@@ -1,6 +1,56 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
+// Metric name → measurement field
+const METRIC_TO_FIELD: Record<string, string> = {
+  peso:     'weight_kg',
+  gordura:  'body_fat_pct',
+  massa:    'muscle_mass_kg',
+  cintura:  'waist_cm',
+  quadril:  'hip_cm',
+  braco:    'arm_cm',
+  coxa:     'thigh_cm',
+}
+
+/** After saving a record, update current_value on matching active patient goals. */
+async function syncGoalsFromRecord(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  patientId: string,
+  record: Record<string, number | null | string>,
+  heightCm?: number | null,
+) {
+  const { data: goals } = await supabase
+    .from('patient_goals')
+    .select('id, metric, direction')
+    .eq('patient_id', patientId)
+    .eq('achieved', false)
+
+  if (!goals?.length) return
+
+  for (const goal of goals) {
+    const metric = (goal.metric ?? '').toLowerCase()
+    let newValue: number | null = null
+
+    if (METRIC_TO_FIELD[metric]) {
+      const val = record[METRIC_TO_FIELD[metric]]
+      newValue = typeof val === 'number' ? val : null
+    } else if (metric === 'imc') {
+      const w = record['weight_kg']
+      const h = heightCm
+      if (typeof w === 'number' && h) {
+        newValue = Math.round((w / ((h / 100) ** 2)) * 10) / 10
+      }
+    }
+
+    if (newValue !== null) {
+      await supabase
+        .from('patient_goals')
+        .update({ current_value: newValue })
+        .eq('id', goal.id)
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -53,5 +103,10 @@ export async function POST(request: NextRequest) {
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Auto-sync active goals current_value
+  const { data: patientInfo } = await supabase.from('patients').select('height_cm').eq('id', body.patient_id).single()
+  await syncGoalsFromRecord(supabase, body.patient_id, data as Record<string, number | null | string>, patientInfo?.height_cm)
+
   return NextResponse.json({ record: data })
 }

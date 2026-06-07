@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 
 interface Record {
@@ -39,9 +39,295 @@ function diff(a: number | null, b: number | null): { val: string; color: string 
   return { val: (d > 0 ? '+' : '') + d.toFixed(1), color: d < 0 ? 'text-emerald-400' : 'text-red-400' }
 }
 
+// ── Evolution Chart ──────────────────────────────────────────────────────────
+interface ChartSeries {
+  key: keyof Record
+  label: string
+  color: string
+  unit: string
+  compute?: (r: Record, heightCm: number | null) => number | null
+}
+
+const CHART_SERIES: ChartSeries[] = [
+  { key: 'weight_kg',      label: 'Peso',        color: '#3B82F6', unit: 'kg' },
+  { key: 'body_fat_pct',   label: '% Gordura',   color: '#F87171', unit: '%' },
+  { key: 'muscle_mass_kg', label: 'Massa Magra',  color: '#34D399', unit: 'kg' },
+  { key: 'waist_cm',       label: 'Cintura',     color: '#FBBF24', unit: 'cm' },
+  { key: 'adherence_pct',  label: 'Aderência',   color: '#A78BFA', unit: '%' },
+]
+
+function EvolutionChart({ records, heightCm }: { records: Record[]; heightCm: number | null }) {
+  const [activeSeries, setActiveSeries] = useState<Set<string>>(new Set(['weight_kg', 'body_fat_pct', 'muscle_mass_kg']))
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [svgWidth, setSvgWidth] = useState(700)
+
+  useEffect(() => {
+    if (!svgRef.current) return
+    const ro = new ResizeObserver(entries => {
+      setSvgWidth(entries[0].contentRect.width)
+    })
+    ro.observe(svgRef.current.parentElement!)
+    setSvgWidth(svgRef.current.parentElement?.clientWidth ?? 700)
+    return () => ro.disconnect()
+  }, [])
+
+  const sorted = [...records].sort((a, b) => a.measured_at.localeCompare(b.measured_at))
+  if (sorted.length < 2) {
+    return (
+      <div className="flex items-center justify-center py-20 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+        Adicione pelo menos 2 avaliações para ver os gráficos de evolução.
+      </div>
+    )
+  }
+
+  const PAD = { top: 24, right: 20, bottom: 52, left: 52 }
+  const H = 280
+  const W = svgWidth
+  const chartW = W - PAD.left - PAD.right
+  const chartH = H - PAD.top - PAD.bottom
+
+  // Build per-series data
+  const seriesData = CHART_SERIES
+    .filter(s => activeSeries.has(s.key))
+    .map(s => {
+      const pts = sorted.map(r => {
+        const v = s.compute ? s.compute(r, heightCm) : (r[s.key] as number | null)
+        return { date: r.measured_at, value: v }
+      }).filter(p => p.value !== null) as { date: string; value: number }[]
+      return { ...s, pts }
+    })
+    .filter(s => s.pts.length >= 2)
+
+  if (!seriesData.length) return (
+    <div className="flex items-center justify-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>
+      Nenhum dado disponível para os indicadores selecionados.
+    </div>
+  )
+
+  // X scale: date index → pixel
+  const allDates = sorted.map(r => r.measured_at)
+  function xScale(date: string) {
+    const idx = allDates.indexOf(date)
+    if (idx === -1) return PAD.left
+    return PAD.left + (idx / (allDates.length - 1)) * chartW
+  }
+
+  // Y scale per series (normalize 0–1 within chart)
+  function getScale(pts: { value: number }[]) {
+    const vals = pts.map(p => p.value)
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const range = max - min || 1
+    return { min, max, range }
+  }
+
+  function yScale(value: number, min: number, range: number) {
+    return PAD.top + chartH - ((value - min) / range) * chartH
+  }
+
+  // Build polyline + area path per series
+  function buildPath(pts: { date: string; value: number }[], min: number, range: number) {
+    const linePoints = pts.map(p => `${xScale(p.date).toFixed(1)},${yScale(p.value, min, range).toFixed(1)}`).join(' ')
+    const first = pts[0], last = pts[pts.length - 1]
+    const areaPoints = [
+      `${xScale(first.date).toFixed(1)},${(PAD.top + chartH).toFixed(1)}`,
+      ...pts.map(p => `${xScale(p.date).toFixed(1)},${yScale(p.value, min, range).toFixed(1)}`),
+      `${xScale(last.date).toFixed(1)},${(PAD.top + chartH).toFixed(1)}`,
+    ].join(' ')
+    return { linePoints, areaPoints }
+  }
+
+  function fmtDate(d: string) {
+    return new Date(d + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+  }
+
+  const hoverRecord = hoverIdx !== null ? sorted[hoverIdx] : null
+
+  return (
+    <div>
+      {/* Series toggles */}
+      <div className="flex gap-2 mb-4 flex-wrap">
+        {CHART_SERIES.map(s => {
+          const active = activeSeries.has(s.key)
+          return (
+            <button key={s.key}
+              onClick={() => setActiveSeries(prev => {
+                const n = new Set(prev)
+                active ? n.delete(s.key) : n.add(s.key)
+                return n
+              })}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={active
+                ? { background: s.color + '22', color: s.color, border: `1px solid ${s.color}44` }
+                : { background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.3)', border: '1px solid rgba(255,255,255,0.08)' }
+              }
+            >
+              <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: active ? s.color : 'rgba(255,255,255,0.15)' }} />
+              {s.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Chart */}
+      <div className="relative rounded-2xl overflow-hidden" style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+        <svg
+          ref={svgRef}
+          width="100%"
+          height={H}
+          viewBox={`0 0 ${W} ${H}`}
+          preserveAspectRatio="none"
+          onMouseLeave={() => setHoverIdx(null)}
+        >
+          <defs>
+            {seriesData.map(s => {
+              const scale = getScale(s.pts)
+              return (
+                <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={s.color} stopOpacity="0.18" />
+                  <stop offset="100%" stopColor={s.color} stopOpacity="0" />
+                </linearGradient>
+              )
+            })}
+          </defs>
+
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75, 1].map(t => {
+            const y = PAD.top + chartH * (1 - t)
+            return (
+              <line key={t} x1={PAD.left} y1={y} x2={W - PAD.right} y2={y}
+                stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+            )
+          })}
+
+          {/* X gridlines */}
+          {allDates.map((d, i) => {
+            const x = xScale(d)
+            return (
+              <line key={d} x1={x} y1={PAD.top} x2={x} y2={PAD.top + chartH}
+                stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+            )
+          })}
+
+          {/* Series: area + line */}
+          {seriesData.map(s => {
+            const scale = getScale(s.pts)
+            const { linePoints, areaPoints } = buildPath(s.pts, scale.min, scale.range)
+            return (
+              <g key={s.key}>
+                <polygon points={areaPoints} fill={`url(#grad-${s.key})`} />
+                <polyline points={linePoints} fill="none" stroke={s.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                {s.pts.map((p, pi) => (
+                  <circle key={pi} cx={xScale(p.date)} cy={yScale(p.value, scale.min, scale.range)}
+                    r={hoverIdx !== null && allDates[hoverIdx] === p.date ? 5 : 3}
+                    fill={s.color} stroke="var(--dark-surface)" strokeWidth="1.5" />
+                ))}
+              </g>
+            )
+          })}
+
+          {/* Y-axis labels (first active series) */}
+          {seriesData[0] && (() => {
+            const s = seriesData[0]
+            const scale = getScale(s.pts)
+            return [0, 0.25, 0.5, 0.75, 1].map(t => {
+              const val = scale.min + scale.range * t
+              const y = PAD.top + chartH * (1 - t)
+              return (
+                <text key={t} x={PAD.left - 6} y={y + 4} textAnchor="end" fontSize="9"
+                  fill="rgba(255,255,255,0.3)">{val.toFixed(1)}</text>
+              )
+            })
+          })()}
+
+          {/* X-axis labels */}
+          {allDates.map((d, i) => {
+            // Show every label if few; skip for crowded
+            const skip = allDates.length > 8 && i % 2 !== 0
+            if (skip) return null
+            return (
+              <text key={d} x={xScale(d)} y={PAD.top + chartH + 18} textAnchor="middle"
+                fontSize="9" fill="rgba(255,255,255,0.3)">
+                {fmtDate(d)}
+              </text>
+            )
+          })}
+
+          {/* Hover line */}
+          {hoverIdx !== null && (() => {
+            const x = xScale(allDates[hoverIdx])
+            return (
+              <line x1={x} y1={PAD.top} x2={x} y2={PAD.top + chartH}
+                stroke="rgba(255,255,255,0.2)" strokeWidth="1" strokeDasharray="3,3" />
+            )
+          })()}
+
+          {/* Invisible hover targets */}
+          {allDates.map((d, i) => {
+            const x = xScale(d)
+            const segW = chartW / (allDates.length)
+            return (
+              <rect key={i} x={x - segW / 2} y={PAD.top} width={segW} height={chartH}
+                fill="transparent" onMouseEnter={() => setHoverIdx(i)} />
+            )
+          })}
+        </svg>
+
+        {/* Hover tooltip */}
+        {hoverRecord && (
+          <div
+            className="absolute top-3 right-4 rounded-xl p-3 text-xs space-y-1 pointer-events-none"
+            style={{ background: 'rgba(6,6,10,0.92)', border: '1px solid rgba(255,255,255,0.1)', minWidth: '140px' }}
+          >
+            <div className="font-semibold text-white mb-1.5">
+              {new Date(hoverRecord.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })}
+            </div>
+            {seriesData.map(s => {
+              const pt = s.pts.find(p => p.date === hoverRecord.measured_at)
+              if (!pt) return null
+              return (
+                <div key={s.key} className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                  <span style={{ color: 'rgba(255,255,255,0.55)' }}>{s.label}:</span>
+                  <span className="font-semibold" style={{ color: s.color }}>{pt.value.toFixed(1)} {s.unit}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* First vs Last delta summary */}
+      {sorted.length >= 2 && (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+          {seriesData.map(s => {
+            const first = s.pts[0], last = s.pts[s.pts.length - 1]
+            const delta = last.value - first.value
+            const lowerBetter = ['body_fat_pct', 'waist_cm', 'weight_kg'].includes(s.key)
+            const positive = lowerBetter ? delta < 0 : delta > 0
+            const deltaStr = (delta > 0 ? '+' : '') + delta.toFixed(1) + ' ' + s.unit
+            return (
+              <div key={s.key} className="rounded-xl p-3" style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+                <div className="text-[10px] mb-1" style={{ color: 'rgba(255,255,255,0.3)' }}>{s.label}</div>
+                <div className="text-base font-black text-white">{last.value.toFixed(1)} <span className="text-xs font-normal" style={{ color: 'rgba(255,255,255,0.3)' }}>{s.unit}</span></div>
+                <div className={`text-[11px] font-semibold mt-0.5 ${positive ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {deltaStr} total
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
 export default function MedidasEditor({ patient, initialRecords }: { patient: Patient; initialRecords: Record[] }) {
   const [records, setRecords] = useState<Record[]>(initialRecords)
   const [addOpen, setAddOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'tabela' | 'graficos'>('tabela')
   const [editingRec, setEditingRec] = useState<Record | null>(null)
   const [form, setForm] = useState<Omit<Record, 'id'>>(EMPTY)
   const [loading, setLoading] = useState(false)
@@ -169,7 +455,19 @@ export default function MedidasEditor({ patient, initialRecords }: { patient: Pa
             <div className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{records.length} avaliação{records.length !== 1 ? 'ões' : ''} registradas</div>
           </div>
         </div>
-        <button onClick={openAdd} className="btn btn-primary">+ Nova Avaliação</button>
+        <div className="flex items-center gap-2">
+          {(['tabela', 'graficos'] as const).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={activeTab === tab
+                ? { background: 'rgba(37,99,235,0.25)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.4)' }
+                : { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }
+              }>
+              {tab === 'tabela' ? '📋 Tabela' : '📈 Gráficos'}
+            </button>
+          ))}
+          <button onClick={openAdd} className="btn btn-primary">+ Nova Avaliação</button>
+        </div>
       </div>
 
       <div className="p-8 max-w-5xl">
@@ -197,8 +495,15 @@ export default function MedidasEditor({ patient, initialRecords }: { patient: Pa
           </div>
         )}
 
+        {/* Evolution Charts Tab */}
+        {activeTab === 'graficos' && (
+          <div className="mb-8">
+            <EvolutionChart records={records} heightCm={patient.height_cm} />
+          </div>
+        )}
+
         {/* Sparkline + BMI */}
-        {weightData.length >= 2 && (
+        {activeTab === 'tabela' && weightData.length >= 2 && (
           <div className="card p-5 mb-8 flex gap-8 flex-wrap">
             <div className="flex-shrink-0">
               <Sparkline />
@@ -232,8 +537,8 @@ export default function MedidasEditor({ patient, initialRecords }: { patient: Pa
           </div>
         )}
 
-        {/* Records table */}
-        {records.length === 0 ? (
+        {/* Records table (only in tabela view) */}
+        {activeTab === 'graficos' ? null : records.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.2)' }}>
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#93C5FD" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
