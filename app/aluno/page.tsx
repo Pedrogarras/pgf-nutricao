@@ -805,6 +805,14 @@ export default async function AlunoPage({
               hint: activeGoals && activeGoals.length > 0 ? `${activeGoals.length} ativas` : null,
               dot: activeGoals && activeGoals.length > 0 ? 'amber' : null,
             },
+            {
+              href: '/aluno/fotos', icon: '📸', label: 'Fotos',
+              hint: null, dot: null,
+            },
+            {
+              href: '/aluno/treino', icon: '🏋️', label: 'Treino',
+              hint: null, dot: null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
