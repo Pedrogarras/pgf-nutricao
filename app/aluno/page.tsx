@@ -868,6 +868,10 @@ export default async function AlunoPage({
               dot: null,
             },
             {
+              href: '/aluno/checkin', icon: '⚖️', label: 'Check-in',
+              hint: 'Medidas', dot: null,
+            },
+            {
               href: '/aluno/suplementos', icon: '💊', label: 'Suplementos',
               hint: null, dot: null,
             },

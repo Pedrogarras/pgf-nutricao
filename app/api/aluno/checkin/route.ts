@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
     weight_kg: body.weight_kg ? Number(body.weight_kg) : null,
     body_fat_pct: body.body_fat_pct ? Number(body.body_fat_pct) : null,
     waist_cm: body.waist_cm ? Number(body.waist_cm) : null,
+    hip_cm: body.hip_cm ? Number(body.hip_cm) : null,
+    arm_cm: body.arm_cm ? Number(body.arm_cm) : null,
     adherence_pct: body.adherence_pct != null ? Number(body.adherence_pct) : null,
     notes: body.notes?.trim() || null,
   }).select().single()
