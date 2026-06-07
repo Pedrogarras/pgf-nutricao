@@ -1242,6 +1242,26 @@ export default function DietEditor({ patient, plan, professionalId }: {
         {/* TAB: PLANO */}
         {tab === 'plano' && (
           <div>
+            {/* Substitutes coverage hint */}
+            {(() => {
+              const allFoods = meals.flatMap(m => m.meal_foods)
+              const withoutSubs = allFoods.filter(mf => (mf.substitutes ?? []).length === 0)
+              if (allFoods.length === 0 || withoutSubs.length === 0) return null
+              return (
+                <div className="mb-4 flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm"
+                  style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)' }}>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ background: 'rgba(245,158,11,0.2)', color: '#D97706' }}>
+                    {withoutSubs.length}/{allFoods.length}
+                  </span>
+                  <span className="text-gray-500">
+                    alimento{withoutSubs.length !== 1 ? 's' : ''} sem substituto — clique em{' '}
+                    <span className="font-semibold text-amber-600">+ OU</span>{' '}
+                    para adicionar opções de troca ao paciente.
+                  </span>
+                </div>
+              )
+            })()}
+
             <div className="grid grid-cols-4 gap-3 mb-6">
               {[
                 { label: 'Calorias', value: r(totals.kcal), goal: goals.kcal, unit: 'kcal', color: 'text-gray-900', bar: '#2B3A8E' },

@@ -26,6 +26,16 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
+
+  // Verify the patient belongs to this professional
+  const { data: patient } = await supabase
+    .from('patients')
+    .select('id')
+    .eq('id', body.patient_id)
+    .eq('professional_id', user.id)
+    .single()
+  if (!patient) return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
+
   const { data, error } = await supabase.from('anthropometric_records').insert({
     patient_id: body.patient_id,
     professional_id: user.id,
