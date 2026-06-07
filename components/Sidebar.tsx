@@ -16,12 +16,13 @@ const NAV = [
     { href: '/pro/treino',     label: 'Prescrição de Treino' },
   ]},
   { label: 'Ferramentas', items: [
-    { href: '/pro/alimentos',  label: 'Banco de Alimentos' },
-    { href: '/pro/receitas',   label: 'Receitas' },
-    { href: '/pro/templates',  label: 'Templates de Refeição' },
-    { href: '/pro/mensagens',  label: 'Templates de Mensagem' },
-    { href: '/pro/exercicios', label: 'Exercícios' },
-    { href: '/pro/agenda',     label: 'Agenda' },
+    { href: '/pro/calculadora', label: '🧮 Calculadora Nutricional' },
+    { href: '/pro/alimentos',   label: 'Banco de Alimentos' },
+    { href: '/pro/receitas',    label: 'Receitas' },
+    { href: '/pro/templates',   label: 'Templates de Refeição' },
+    { href: '/pro/mensagens',   label: 'Templates de Mensagem' },
+    { href: '/pro/exercicios',  label: 'Exercícios' },
+    { href: '/pro/agenda',      label: 'Agenda' },
   ]},
 ]
 
