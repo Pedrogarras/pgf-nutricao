@@ -18,8 +18,35 @@ export async function publishPlan(planId: string) {
   await supabase.from('diet_plans').update({ published_at: new Date().toISOString() }).eq('id', planId).eq('professional_id', user.id)
 }
 
+// Helper: verify a meal belongs to this professional via diet_plan ownership
+async function getMealOwnerId(supabase: Awaited<ReturnType<typeof createClient>>, mealId: string) {
+  const { data } = await supabase
+    .from('meals')
+    .select('diet_plans(professional_id)')
+    .eq('id', mealId)
+    .single()
+  return (data?.diet_plans as { professional_id: string } | null)?.professional_id ?? null
+}
+
+// Helper: verify a meal_food belongs to this professional
+async function getMealFoodOwnerId(supabase: Awaited<ReturnType<typeof createClient>>, mealFoodId: string) {
+  const { data } = await supabase
+    .from('meal_foods')
+    .select('meal:meals(diet_plans(professional_id))')
+    .eq('id', mealFoodId)
+    .single()
+  return ((data?.meal as { diet_plans?: { professional_id?: string } } | null)?.diet_plans?.professional_id) ?? null
+}
+
 export async function addMeal(planId: string, name: string, timeStart: string, emoji: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // Verify plan ownership
+  const { data: plan } = await supabase.from('diet_plans').select('id').eq('id', planId).eq('professional_id', user.id).single()
+  if (!plan) return { error: 'Não encontrado' }
+
   const { data: existing } = await supabase.from('meals').select('sort_order').eq('diet_plan_id', planId).order('sort_order', { ascending: false }).limit(1).single()
   const sort_order = (existing?.sort_order ?? 0) + 1
 
@@ -37,11 +64,20 @@ export async function addMeal(planId: string, name: string, timeStart: string, e
 
 export async function removeMeal(mealId: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const ownerId = await getMealOwnerId(supabase, mealId)
+  if (ownerId !== user.id) return
   await supabase.from('meals').delete().eq('id', mealId)
 }
 
 export async function addFoodToMeal(mealId: string, foodId: string, quantityG: number, description: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  const ownerId = await getMealOwnerId(supabase, mealId)
+  if (ownerId !== user.id) return { error: 'Não encontrado' }
+
   const { data: existing } = await supabase.from('meal_foods').select('sort_order').eq('meal_id', mealId).order('sort_order', { ascending: false }).limit(1).single()
   const sort_order = (existing?.sort_order ?? 0) + 1
 
@@ -59,11 +95,19 @@ export async function addFoodToMeal(mealId: string, foodId: string, quantityG: n
 
 export async function removeFoodFromMeal(mealFoodId: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const ownerId = await getMealFoodOwnerId(supabase, mealFoodId)
+  if (ownerId !== user.id) return
   await supabase.from('meal_foods').delete().eq('id', mealFoodId)
 }
 
 export async function updateMealFood(mealFoodId: string, quantityG: number, description?: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const ownerId = await getMealFoodOwnerId(supabase, mealFoodId)
+  if (ownerId !== user.id) return
   const update: Record<string, unknown> = { quantity_g: quantityG }
   if (description !== undefined) update.quantity_description = description
   await supabase.from('meal_foods').update(update).eq('id', mealFoodId)
@@ -71,6 +115,11 @@ export async function updateMealFood(mealFoodId: string, quantityG: number, desc
 
 export async function addSubstitute(mealFoodId: string, foodId: string, quantityG: number, description: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  const ownerId = await getMealFoodOwnerId(supabase, mealFoodId)
+  if (ownerId !== user.id) return { error: 'Não encontrado' }
+
   const { data: existing } = await supabase
     .from('meal_food_substitutes')
     .select('sort_order')
@@ -94,11 +143,26 @@ export async function addSubstitute(mealFoodId: string, foodId: string, quantity
 
 export async function removeSubstitute(substituteId: string) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  // Ownership via join
+  const { data: sub } = await supabase
+    .from('meal_food_substitutes')
+    .select('meal_food:meal_foods(meal:meals(diet_plans(professional_id)))')
+    .eq('id', substituteId)
+    .single()
+  const ownerId = ((sub?.meal_food as { meal?: { diet_plans?: { professional_id?: string } } } | null)
+    ?.meal?.diet_plans?.professional_id) ?? null
+  if (ownerId !== user.id) return
   await supabase.from('meal_food_substitutes').delete().eq('id', substituteId)
 }
 
 export async function updateMeal(mealId: string, data: { name?: string; time_start?: string; emoji?: string; notes?: string }) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const ownerId = await getMealOwnerId(supabase, mealId)
+  if (ownerId !== user.id) return
   await supabase.from('meals').update(data).eq('id', mealId)
 }
 

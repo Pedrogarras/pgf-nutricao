@@ -117,31 +117,77 @@ export default async function AlunoPage({
 
       <div className="px-4 -mt-12 space-y-4">
         {/* Macro card */}
-        {selectedPlan && (
-          <div className="rounded-2xl p-4 shadow-xl" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
-            <div className="text-[11px] font-bold uppercase tracking-wide mb-3" style={{ color: 'rgba(197,205,240,0.5)' }}>
-              Meta do dia{selectedPlan.kcal_goal ? ` — ${selectedPlan.kcal_goal} kcal` : ''}
+        {selectedPlan && (() => {
+          const hasGoals = selectedPlan.protein_goal_g || selectedPlan.carbs_goal_g || selectedPlan.fat_goal_g
+          const macroList = [
+            { label: 'Prot', value: r(totals.protein), goal: selectedPlan.protein_goal_g, color: '#93C5FD', trackColor: 'rgba(147,197,253,0.2)' },
+            { label: 'Carb', value: r(totals.carbs), goal: selectedPlan.carbs_goal_g, color: '#FCD34D', trackColor: 'rgba(252,211,77,0.2)' },
+            { label: 'Gord', value: r(totals.fat), goal: selectedPlan.fat_goal_g, color: '#FCA5A5', trackColor: 'rgba(252,165,165,0.2)' },
+          ]
+          return (
+            <div className="rounded-2xl p-4 shadow-xl" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+              {/* kcal header */}
+              <div className="flex items-end justify-between mb-4">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'rgba(197,205,240,0.4)' }}>
+                    Total do dia
+                  </div>
+                  <div className="text-3xl font-black text-white leading-none">
+                    {r(totals.kcal)}
+                    <span className="text-base font-medium ml-1" style={{ color: 'rgba(197,205,240,0.4)' }}>kcal</span>
+                  </div>
+                </div>
+                {selectedPlan.kcal_goal && (
+                  <div className="text-right">
+                    <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>meta</div>
+                    <div className="text-sm font-bold" style={{ color: 'rgba(197,205,240,0.5)' }}>{selectedPlan.kcal_goal} kcal</div>
+                  </div>
+                )}
+              </div>
+              {/* kcal progress bar */}
+              {selectedPlan.kcal_goal && (
+                <div className="mb-4">
+                  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (totals.kcal / selectedPlan.kcal_goal) * 100).toFixed(1)}%`,
+                        background: 'linear-gradient(90deg, #2563EB, #60A5FA)',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {/* Macros */}
+              <div className="grid grid-cols-3 gap-3">
+                {macroList.map(m => (
+                  <div key={m.label}>
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-base font-black" style={{ color: m.color }}>{m.value}g</span>
+                      {hasGoals && m.goal && (
+                        <span className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>/{m.goal}g</span>
+                      )}
+                    </div>
+                    {hasGoals && m.goal ? (
+                      <div className="h-1 rounded-full overflow-hidden" style={{ background: m.trackColor }}>
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(100, (m.value / m.goal) * 100).toFixed(1)}%`,
+                            background: m.color,
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-px" style={{ background: m.trackColor }} />
+                    )}
+                    <div className="text-[10px] mt-1" style={{ color: 'rgba(197,205,240,0.4)' }}>{m.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              <div>
-                <div className="text-xl font-black text-white">{r(totals.kcal)}</div>
-                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>kcal</div>
-              </div>
-              <div>
-                <div className="text-xl font-black" style={{ color: '#93C5FD' }}>{r(totals.protein)}g</div>
-                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Prot</div>
-              </div>
-              <div>
-                <div className="text-xl font-black" style={{ color: '#FCD34D' }}>{r(totals.carbs)}g</div>
-                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Carb</div>
-              </div>
-              <div>
-                <div className="text-xl font-black" style={{ color: '#FCA5A5' }}>{r(totals.fat)}g</div>
-                <div className="text-[10px]" style={{ color: 'rgba(197,205,240,0.45)' }}>Gord</div>
-              </div>
-            </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Diet plan */}
         {selectedPlan ? (

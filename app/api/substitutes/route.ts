@@ -13,6 +13,26 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'Dados inválidos' }, { status: 400 })
   }
 
+  // Ownership check: verify the substitute belongs to a plan owned by this professional
+  const { data: sub } = await supabase
+    .from('meal_food_substitutes')
+    .select(`
+      id,
+      meal_food:meal_foods(
+        meal:meals(
+          diet_plan:diet_plans(professional_id)
+        )
+      )
+    `)
+    .eq('id', id)
+    .single()
+
+  const professionalId = (sub?.meal_food as { meal?: { diet_plan?: { professional_id?: string } } } | null)
+    ?.meal?.diet_plan?.professional_id
+  if (!sub || professionalId !== user.id) {
+    return NextResponse.json({ error: 'Não encontrado' }, { status: 404 })
+  }
+
   const { error } = await supabase
     .from('meal_food_substitutes')
     .update({ quantity_g, quantity_description })
