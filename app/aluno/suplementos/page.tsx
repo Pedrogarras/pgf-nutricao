@@ -35,34 +35,72 @@ export default function AlunoSupplementsPage() {
   const [loading, setLoading] = useState(true)
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [tab, setTab] = useState<'hoje' | 'todos'>('hoje')
+  const [toggling, setToggling] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    fetch('/api/supplements')
-      .then(r => r.json())
-      .then(d => {
-        setSupplements((d.supplements ?? []).filter((s: { active: boolean }) => s.active))
+    async function load() {
+      try {
+        const [suppRes, logRes] = await Promise.all([
+          fetch('/api/supplements').then(r => r.json()),
+          fetch(`/api/supplement-logs?date=${TODAY}`).then(r => r.json()).catch(() => ({ logs: [] })),
+        ])
+        const activeSups = (suppRes.supplements ?? []).filter((s: { active: boolean }) => s.active)
+        setSupplements(activeSups)
+        // DB logs take priority over localStorage
+        const dbChecked = new Set<string>((logRes.logs ?? []).filter((l: { taken: boolean }) => l.taken).map((l: { supplement_id: string }) => l.supplement_id))
+        if (dbChecked.size > 0) {
+          setChecked(dbChecked)
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...dbChecked])) } catch { /* ignore */ }
+        } else {
+          // Fall back to localStorage for offline state
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY)
+            if (saved) setChecked(new Set(JSON.parse(saved)))
+          } catch { /* ignore */ }
+        }
+      } catch { /* ignore */ } finally {
         setLoading(false)
-      })
-      .catch(() => setLoading(false))
-
-    // Load today's checks from localStorage
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) setChecked(new Set(JSON.parse(saved)))
-    } catch { /* ignore */ }
+      }
+    }
+    load()
   }, [])
 
-  function toggleCheck(id: string) {
+  async function toggleCheck(id: string) {
+    if (toggling.has(id)) return
+    const willCheck = !checked.has(id)
+
+    // Optimistic update
     setChecked(prev => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
+      willCheck ? next.add(id) : next.delete(id)
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
       return next
     })
+    setToggling(prev => new Set([...prev, id]))
+
+    try {
+      if (willCheck) {
+        await fetch('/api/supplement-logs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supplement_id: id, logged_date: TODAY, taken: true }),
+        })
+      } else {
+        await fetch('/api/supplement-logs', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ supplement_id: id, logged_date: TODAY }),
+        })
+      }
+    } catch { /* revert on error */
+      setChecked(prev => {
+        const next = new Set(prev)
+        willCheck ? next.delete(id) : next.add(id)
+        return next
+      })
+    } finally {
+      setToggling(prev => { const n = new Set(prev); n.delete(id); return n })
+    }
   }
 
   // Group by timing
@@ -204,7 +242,8 @@ export default function AlunoSupplementsPage() {
                           const isChecked = checked.has(s.id)
                           return (
                             <button key={s.id} onClick={() => toggleCheck(s.id)}
-                              className="w-full rounded-xl p-4 flex items-center gap-4 text-left transition-all active:scale-[0.98]"
+                              disabled={toggling.has(s.id)}
+                              className="w-full rounded-xl p-4 flex items-center gap-4 text-left transition-all active:scale-[0.98] disabled:opacity-70"
                               style={{
                                 background: isChecked ? 'rgba(34,197,94,0.07)' : 'rgba(255,255,255,0.03)',
                                 border: `1px solid ${isChecked ? 'rgba(34,197,94,0.25)' : 'rgba(255,255,255,0.07)'}`,
@@ -215,7 +254,12 @@ export default function AlunoSupplementsPage() {
                                   background: isChecked ? '#22c55e' : 'rgba(255,255,255,0.06)',
                                   border: `2px solid ${isChecked ? '#22c55e' : 'rgba(255,255,255,0.15)'}`,
                                 }}>
-                                {isChecked && <span className="text-white text-xs font-black">✓</span>}
+                                {toggling.has(s.id)
+                                  ? <span className="text-white text-xs animate-spin">↻</span>
+                                  : isChecked
+                                    ? <span className="text-white text-xs font-black">✓</span>
+                                    : null
+                                }
                               </div>
 
                               <div className="flex-1 min-w-0">

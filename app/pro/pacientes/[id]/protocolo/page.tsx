@@ -113,6 +113,7 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
     { data: lastDiary },
     { data: upcomingConsultation },
     { data: recentWorkoutLogs },
+    { data: supplementLogs7d },
   ] = await Promise.all([
     supabase.from('patients').select('*').eq('id', id).eq('professional_id', user.id).single(),
     supabase.from('anthropometric_records')
@@ -157,6 +158,12 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
       .gte('logged_at', sevenDaysAgoStr)
       .lte('logged_at', todayStr2)
       .order('logged_at', { ascending: false }),
+    // Supplement logs last 7 days
+    supabase.from('supplement_logs')
+      .select('supplement_id, logged_date, taken')
+      .eq('patient_id', id)
+      .gte('logged_date', sevenDaysAgoStr)
+      .lte('logged_date', todayStr2),
   ])
 
   if (!patient) redirect('/pro/pacientes')
@@ -502,22 +509,51 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
             <div className="card p-5">
               <SectionHead title="Suplementação" href={`/pro/pacientes/${id}/suplementos`} linkLabel="Editar" />
               {supplements && supplements.length > 0 ? (
-                <div className="space-y-2">
-                  {supplements.map((s, i) => (
-                    <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
-                        style={{ background: 'rgba(16,185,129,0.1)' }}>💊</div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs font-bold text-gray-800 leading-tight">{s.name}</div>
-                        <div className="text-[10px] text-gray-500 mt-0.5">
-                          {s.dosage} {s.unit} · {TIMING_LABELS[s.timing ?? ''] ?? s.timing ?? '—'}
-                          {s.frequency ? ` · ${s.frequency}` : ''}
+                <>
+                  {/* 7-day adherence bar if patient has logged */}
+                  {(() => {
+                    const sLogs = supplementLogs7d ?? []
+                    if (sLogs.length === 0) return null
+                    // Total expected = supplements.length × 7
+                    const expected = (supplements?.length ?? 0) * 7
+                    const taken = sLogs.filter(l => l.taken).length
+                    const pct = expected > 0 ? Math.round((taken / expected) * 100) : 0
+                    const color = pct >= 80 ? '#4ADE80' : pct >= 50 ? '#FBBF24' : '#F87171'
+                    return (
+                      <div className="mb-3 rounded-xl p-3"
+                        style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[10px] font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                            Aderência 7 dias
+                          </span>
+                          <span className="text-xs font-black" style={{ color }}>{pct}%</span>
                         </div>
-                        {s.notes && <div className="text-[10px] text-gray-400 italic mt-0.5">{s.notes}</div>}
+                        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: color }} />
+                        </div>
+                        <div className="text-[9px] mt-1" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                          {taken} tomadas de {expected} esperadas
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    )
+                  })()}
+                  <div className="space-y-2">
+                    {supplements.map((s, i) => (
+                      <div key={i} className="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm flex-shrink-0"
+                          style={{ background: 'rgba(16,185,129,0.1)' }}>💊</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-bold text-gray-800 leading-tight">{s.name}</div>
+                          <div className="text-[10px] text-gray-500 mt-0.5">
+                            {s.dosage} {s.unit} · {TIMING_LABELS[s.timing ?? ''] ?? s.timing ?? '—'}
+                            {s.frequency ? ` · ${s.frequency}` : ''}
+                          </div>
+                          {s.notes && <div className="text-[10px] text-gray-400 italic mt-0.5">{s.notes}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="text-xs text-gray-400 text-center py-4">
                   Nenhum suplemento prescrito
