@@ -921,6 +921,14 @@ export default async function AlunoPage({
               href: '/aluno/compras', icon: '🛒', label: 'Compras',
               hint: 'Lista do plano', dot: null,
             },
+            {
+              href: '/aluno/semana', icon: '📅', label: 'Semana',
+              hint: 'Resumo semanal', dot: null,
+            },
+            {
+              href: '/aluno/conquistas', icon: '🏅', label: 'Conquistas',
+              hint: 'Badges e XP', dot: null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
