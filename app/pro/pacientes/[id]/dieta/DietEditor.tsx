@@ -1349,10 +1349,16 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
   }
 
   const w = patient.weight_kg ?? 0, h = patient.height_cm ?? 0
+  const age = patient.date_of_birth
+    ? Math.floor((Date.now() - new Date(patient.date_of_birth + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+    : 30
   const tmb = patient.gender === 'F'
-    ? 655.1 + (9.563 * w) + (1.850 * h)
-    : 66.5 + (13.75 * w) + (5.003 * h)
-  const fatores: Record<string, number> = { sedentario: 1.2, levemente_ativo: 1.375, moderadamente_ativo: 1.55, muito_ativo: 1.725 }
+    ? 655.1 + (9.563 * w) + (1.850 * h) - (4.676 * age)
+    : 66.5 + (13.75 * w) + (5.003 * h) - (6.75 * age)
+  const fatores: Record<string, number> = {
+    sedentario: 1.2, levemente_ativo: 1.375, moderadamente_ativo: 1.55,
+    muito_ativo: 1.725, extremamente_ativo: 1.9,
+  }
   const get = Math.round(tmb * (fatores[patient.activity_level ?? 'levemente_ativo'] ?? 1.375))
 
   return (
@@ -1385,6 +1391,7 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
           <div className="card-body space-y-3 text-sm">
             {[
               { label: 'Nome', value: patient.full_name },
+              { label: 'Idade', value: patient.date_of_birth ? `${age} anos` : '—' },
               { label: 'Peso', value: patient.weight_kg ? `${patient.weight_kg} kg` : '—' },
               { label: 'Altura', value: patient.height_cm ? `${patient.height_cm} cm` : '—' },
               { label: 'Objetivo', value: patient.goal ?? '—' },
