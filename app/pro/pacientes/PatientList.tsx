@@ -11,22 +11,66 @@ type Patient = {
 
 export default function PatientList({ patients }: { patients: Patient[] }) {
   const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'stale'>('name')
+  const [filterAccess, setFilterAccess] = useState<'all' | 'active' | 'inactive'>('all')
 
-  const filtered = patients.filter(p =>
-    p.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
-    (p.goal ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = patients
+    .filter(p =>
+      p.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      (p.email ?? '').toLowerCase().includes(search.toLowerCase()) ||
+      (p.goal ?? '').toLowerCase().includes(search.toLowerCase())
+    )
+    .filter(p => {
+      if (filterAccess === 'active') return !!p.auth_user_id
+      if (filterAccess === 'inactive') return !p.auth_user_id
+      return true
+    })
+    .sort((a, b) => {
+      if (sortBy === 'name') return a.full_name.localeCompare(b.full_name)
+      if (sortBy === 'lastCheckin') {
+        const da = a.lastCheckIn?.measured_at ?? '1900'
+        const db = b.lastCheckIn?.measured_at ?? '1900'
+        return db.localeCompare(da)
+      }
+      if (sortBy === 'stale') {
+        const da = a.lastCheckIn?.measured_at ?? '1900'
+        const db = b.lastCheckIn?.measured_at ?? '1900'
+        return da.localeCompare(db) // oldest first = most attention needed
+      }
+      return 0
+    })
+
+  const staleCount = patients.filter(p => {
+    if (!p.lastCheckIn) return true
+    const days = Math.floor((Date.now() - new Date(p.lastCheckIn.measured_at + 'T12:00').getTime()) / (1000 * 60 * 60 * 24))
+    return days > 30
+  }).length
 
   return (
     <>
-      <div className="mb-5">
+      <div className="mb-5 flex items-center gap-3 flex-wrap">
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Filtrar por nome, e-mail ou objetivo..."
           className="form-input max-w-sm"
         />
+        <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} className="form-select w-auto text-sm">
+          <option value="name">↑ A–Z Nome</option>
+          <option value="lastCheckin">↓ Check-in recente</option>
+          <option value="stale">⚠ Sem check-in (atenção)</option>
+        </select>
+        <div className="flex gap-1">
+          {(['all', 'active', 'inactive'] as const).map(v => (
+            <button key={v} onClick={() => setFilterAccess(v)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterAccess === v ? 'bg-pgf-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              {v === 'all' ? 'Todos' : v === 'active' ? '✅ Com acesso' : '⬜ Sem acesso'}
+            </button>
+          ))}
+        </div>
+        {staleCount > 0 && (
+          <span className="badge badge-red text-xs">{staleCount} paciente{staleCount !== 1 ? 's' : ''} sem check-in há 30+ dias</span>
+        )}
       </div>
 
       <div className="card">
@@ -132,9 +176,11 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                     )}
                   </td>
                   <td className="px-5 py-3.5">
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5 flex-wrap">
                       <Link href={`/pro/pacientes/${p.id}`} className="btn btn-primary btn-sm">Abrir</Link>
-                      <Link href={`/pro/pacientes/${p.id}/treino`} className="btn btn-outline btn-sm">Treino</Link>
+                      <Link href={`/pro/pacientes/${p.id}/diario`} className="btn btn-outline btn-sm text-xs">📔</Link>
+                      <Link href={`/pro/pacientes/${p.id}/fotos`} className="btn btn-outline btn-sm text-xs">📸</Link>
+                      <Link href={`/pro/pacientes/${p.id}/metas`} className="btn btn-outline btn-sm text-xs">🎯</Link>
                     </div>
                   </td>
                 </tr>
