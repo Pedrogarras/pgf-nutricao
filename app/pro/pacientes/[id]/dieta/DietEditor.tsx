@@ -1680,38 +1680,102 @@ function AnamneseTab({ patient, planId, anamnesis, onSaved }: { patient: Patient
 type CheckIn = { id: string; measured_at: string; weight_kg: number | null; body_fat_pct: number | null; muscle_mass_kg: number | null; waist_cm: number | null; hip_cm: number | null; arm_cm: number | null; thigh_cm: number | null; calf_cm: number | null; adherence_pct: number | null; notes: string | null }
 
 function WeightSparkline({ records }: { records: CheckIn[] }) {
-  const weights = [...records].reverse().map(r => r.weight_kg).filter((w): w is number => w != null)
+  const sorted = [...records].reverse() // oldest → newest
+  const weights = sorted.map(r => r.weight_kg).filter((w): w is number => w != null)
   if (weights.length < 2) return null
-  const W = 160, H = 40, PAD = 4
-  const min = Math.min(...weights), max = Math.max(...weights)
+
+  const W = 580, H = 72, PAD_X = 40, PAD_Y = 8
+  const min = Math.min(...weights) - 0.5
+  const max = Math.max(...weights) + 0.5
   const range = max - min || 1
-  const pts = weights.map((w, i) => {
-    const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
-    const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
-    return `${x},${y}`
-  })
+
+  const xOf = (i: number) => PAD_X + (i / (weights.length - 1)) * (W - PAD_X * 2)
+  const yOf = (w: number) => H - PAD_Y - ((w - min) / range) * (H - PAD_Y * 2)
+
+  const pts = weights.map((w, i) => `${r(xOf(i))},${r(yOf(w))}`)
+  const areaPath = `M${xOf(0)},${yOf(weights[0])} ` + weights.map((w, i) => `L${r(xOf(i))},${r(yOf(w))}`).join(' ') + ` L${r(xOf(weights.length - 1))},${H} L${r(xOf(0))},${H} Z`
+
   const trend = weights[weights.length - 1] - weights[0]
   const color = trend <= 0 ? '#22c55e' : '#ef4444'
+  const areaColor = trend <= 0 ? 'rgba(34,197,94,0.08)' : 'rgba(239,68,68,0.07)'
+
+  // Adherence bars
+  const adherenceData = sorted.filter(c => c.adherence_pct != null)
+
   return (
     <div className="mb-6 card p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Progressão de Peso</span>
-        <span style={{ color, fontSize: 12, fontWeight: 600 }}>
-          {trend > 0 ? '+' : ''}{r(trend)} kg total
-        </span>
+        <div>
+          <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Progressão de Peso</span>
+          <span className="ml-3 text-xs text-gray-400">{weights.length} avaliações</span>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="text-gray-400">Mín: <strong className="text-gray-700">{Math.min(...weights)} kg</strong></span>
+          <span className="text-gray-400">Máx: <strong className="text-gray-700">{Math.max(...weights)} kg</strong></span>
+          <span style={{ color, fontWeight: 700 }}>
+            {trend > 0 ? '+' : ''}{r(trend)} kg no período
+          </span>
+        </div>
       </div>
-      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        {weights.map((w, i) => {
-          const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
-          const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
-          return <circle key={i} cx={x} cy={y} r="3" fill={color} />
+      <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible' }}>
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map(t => {
+          const y = PAD_Y + t * (H - PAD_Y * 2)
+          const val = r(max - t * range)
+          return (
+            <g key={t}>
+              <line x1={PAD_X} y1={y} x2={W - PAD_X} y2={y} stroke="#f3f4f6" strokeWidth="1" />
+              <text x={PAD_X - 4} y={y + 3} textAnchor="end" fontSize="9" fill="#9ca3af">{val}</text>
+            </g>
+          )
+        })}
+        {/* Area */}
+        <path d={areaPath} fill={areaColor} />
+        {/* Line */}
+        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Points with labels */}
+        {weights.map((w, i) => (
+          <g key={i}>
+            <circle cx={r(xOf(i))} cy={r(yOf(w))} r="4" fill={color} stroke="white" strokeWidth="1.5" />
+            {(i === 0 || i === weights.length - 1) && (
+              <text x={r(xOf(i))} y={r(yOf(w)) - 8} textAnchor="middle" fontSize="9" fontWeight="bold" fill={color}>{w}</text>
+            )}
+          </g>
+        ))}
+        {/* X-axis labels */}
+        {sorted.map((rec, i) => {
+          if (rec.weight_kg == null) return null
+          const x = r(xOf(weights.indexOf(rec.weight_kg as number)))
+          if (i !== 0 && i !== sorted.length - 1 && sorted.length > 4) return null
+          return (
+            <text key={i} x={x} y={H + 14} textAnchor="middle" fontSize="9" fill="#9ca3af">
+              {new Date(rec.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+            </text>
+          )
         })}
       </svg>
-      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
-        <span>{new Date([...records].reverse()[0].measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-        <span>{new Date(records[0].measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
-      </div>
+
+      {/* Adherence trend */}
+      {adherenceData.length > 0 && (
+        <div className="mt-4 pt-3 border-t border-gray-50">
+          <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Adesão ao plano por avaliação</div>
+          <div className="flex items-end gap-1.5" style={{ height: 28 }}>
+            {adherenceData.map((c, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                <div
+                  className="w-full rounded-sm"
+                  style={{
+                    height: `${Math.round((c.adherence_pct! / 100) * 24)}px`,
+                    background: c.adherence_pct! >= 80 ? '#22c55e' : c.adherence_pct! >= 50 ? '#3b82f6' : '#ef4444',
+                    opacity: 0.7,
+                  }}
+                />
+                <div className="text-[8px] text-gray-400">{c.adherence_pct}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1722,6 +1786,7 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [editingRecord, setEditingRecord] = useState<CheckIn | null>(null)
 
   useEffect(() => {
     fetch(`/api/records?patient_id=${patientId}`)
@@ -1751,6 +1816,29 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
     await fetch(`/api/records/${id}`, { method: 'DELETE' })
     setRecords(prev => prev.filter(r => r.id !== id))
     setDeletingId(null)
+  }
+
+  async function handleEdit(e: React.FormEvent<HTMLFormElement>) {
+    if (!editingRecord) return
+    e.preventDefault()
+    setLoading(true)
+    const fd = new FormData(e.currentTarget)
+    const res = await fetch(`/api/records/${editingRecord.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        measured_at: fd.get('measured_at'), weight_kg: fd.get('weight_kg') || null,
+        body_fat_pct: fd.get('body_fat_pct') || null, muscle_mass_kg: fd.get('muscle_mass_kg') || null,
+        waist_cm: fd.get('waist_cm') || null, hip_cm: fd.get('hip_cm') || null,
+        arm_cm: fd.get('arm_cm') || null, thigh_cm: fd.get('thigh_cm') || null,
+        calf_cm: fd.get('calf_cm') || null, adherence_pct: fd.get('adherence_pct') || null,
+        notes: fd.get('notes') || null,
+      }),
+    })
+    const data = await res.json()
+    if (data.record) setRecords(prev => prev.map(r => r.id === editingRecord.id ? data.record : r))
+    setEditingRecord(null)
+    setLoading(false)
   }
 
   // Compute weight delta vs previous check-in (records sorted newest first)
@@ -1804,18 +1892,30 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-400 max-w-[140px] truncate">{rec.notes ?? ''}</td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleDelete(rec.id)}
-                      disabled={deletingId === rec.id}
-                      className="text-gray-300 hover:text-red-400 transition-colors text-xs"
-                      title="Excluir"
-                    >
-                      {deletingId === rec.id ? '...' : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setEditingRecord(rec)}
+                        className="text-gray-300 hover:text-pgf-500 transition-colors"
+                        title="Editar"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
-                      )}
-                    </button>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(rec.id)}
+                        disabled={deletingId === rec.id}
+                        className="text-gray-300 hover:text-red-400 transition-colors text-xs"
+                        title="Excluir"
+                      >
+                        {deletingId === rec.id ? '...' : (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -1834,42 +1934,50 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
         </table>
       </div>
 
-      {addOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setAddOpen(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">Novo Check-in</h3>
-            <form onSubmit={handleAdd} className="space-y-4">
-              <div><label className="form-label">Data da avaliação</label><input name="measured_at" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="form-input" /></div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Composição corporal</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div><label className="form-label">Peso (kg)</label><input name="weight_kg" type="number" step="0.1" className="form-input" /></div>
-                  <div><label className="form-label">% Gordura</label><input name="body_fat_pct" type="number" step="0.1" className="form-input" /></div>
-                  <div><label className="form-label">M. Muscular (kg)</label><input name="muscle_mass_kg" type="number" step="0.1" className="form-input" /></div>
+      {(addOpen || editingRecord) && (() => {
+        const isEdit = !!editingRecord
+        const rec = editingRecord
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => isEdit ? setEditingRecord(null) : setAddOpen(false)}>
+            <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-lg mb-4">{isEdit ? 'Editar Check-in' : 'Novo Check-in'}</h3>
+              <form onSubmit={isEdit ? handleEdit : handleAdd} className="space-y-4">
+                <div><label className="form-label">Data da avaliação</label>
+                  <input name="measured_at" type="date" required
+                    defaultValue={rec?.measured_at ?? new Date().toISOString().split('T')[0]}
+                    className="form-input" />
                 </div>
-              </div>
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Circunferências (cm)</div>
-                <div className="grid grid-cols-4 gap-3">
-                  <div><label className="form-label">Cintura</label><input name="waist_cm" type="number" step="0.1" className="form-input" /></div>
-                  <div><label className="form-label">Quadril</label><input name="hip_cm" type="number" step="0.1" className="form-input" /></div>
-                  <div><label className="form-label">Braço</label><input name="arm_cm" type="number" step="0.1" className="form-input" /></div>
-                  <div><label className="form-label">Coxa</label><input name="thigh_cm" type="number" step="0.1" className="form-input" /></div>
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Composição corporal</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><label className="form-label">Peso (kg)</label><input name="weight_kg" type="number" step="0.1" defaultValue={rec?.weight_kg ?? ''} className="form-input" /></div>
+                    <div><label className="form-label">% Gordura</label><input name="body_fat_pct" type="number" step="0.1" defaultValue={rec?.body_fat_pct ?? ''} className="form-input" /></div>
+                    <div><label className="form-label">M. Muscular (kg)</label><input name="muscle_mass_kg" type="number" step="0.1" defaultValue={rec?.muscle_mass_kg ?? ''} className="form-input" /></div>
+                  </div>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">Panturrilha (cm)</label><input name="calf_cm" type="number" step="0.1" className="form-input" /></div>
-                <div><label className="form-label">Adesão (%)</label><input name="adherence_pct" type="number" min="0" max="100" className="form-input" /></div>
-              </div>
-              <div><label className="form-label">Observações</label><textarea name="notes" className="form-textarea" rows={2} /></div>
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setAddOpen(false)} className="btn btn-ghost">Cancelar</button>
-                <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Salvando...' : 'Salvar'}</button>
-              </div>
-            </form>
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Circunferências (cm)</div>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div><label className="form-label">Cintura</label><input name="waist_cm" type="number" step="0.1" defaultValue={rec?.waist_cm ?? ''} className="form-input" /></div>
+                    <div><label className="form-label">Quadril</label><input name="hip_cm" type="number" step="0.1" defaultValue={rec?.hip_cm ?? ''} className="form-input" /></div>
+                    <div><label className="form-label">Braço</label><input name="arm_cm" type="number" step="0.1" defaultValue={rec?.arm_cm ?? ''} className="form-input" /></div>
+                    <div><label className="form-label">Coxa</label><input name="thigh_cm" type="number" step="0.1" defaultValue={rec?.thigh_cm ?? ''} className="form-input" /></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="form-label">Panturrilha (cm)</label><input name="calf_cm" type="number" step="0.1" defaultValue={rec?.calf_cm ?? ''} className="form-input" /></div>
+                  <div><label className="form-label">Adesão (%)</label><input name="adherence_pct" type="number" min="0" max="100" defaultValue={rec?.adherence_pct ?? ''} className="form-input" /></div>
+                </div>
+                <div><label className="form-label">Observações</label><textarea name="notes" className="form-textarea" rows={2} defaultValue={rec?.notes ?? ''} /></div>
+                <div className="flex justify-end gap-3">
+                  <button type="button" onClick={() => isEdit ? setEditingRecord(null) : setAddOpen(false)} className="btn btn-ghost">Cancelar</button>
+                  <button type="submit" disabled={loading} className="btn btn-primary">{loading ? 'Salvando...' : isEdit ? 'Atualizar' : 'Salvar'}</button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
