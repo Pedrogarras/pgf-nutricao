@@ -13,7 +13,7 @@ interface LocalFood extends Food { }
 interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number }
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
 interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
-interface LocalPlan { id: string; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; meals: LocalMeal[] }
+interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; meals: LocalMeal[] }
 
 // ===================== HELPERS =====================
 function calcMacros(qty: number, food: LocalFood) {
@@ -847,11 +847,10 @@ function TemplatePickerModal({ planId, onPicked, onBlank }: {
 }
 
 // ===================== EDITOR PRINCIPAL =====================
-export default function DietEditor({ patient, plan, professionalId, isNew }: {
+export default function DietEditor({ patient, plan, professionalId }: {
   patient: Patient
   plan: LocalPlan
   professionalId: string
-  isNew?: boolean
 }) {
   const [meals, setMeals] = useState<LocalMeal[]>(
     (plan.meals ?? []).map(m => ({
@@ -862,7 +861,8 @@ export default function DietEditor({ patient, plan, professionalId, isNew }: {
       }))
     }))
   )
-  const [showTemplatePicker, setShowTemplatePicker] = useState(isNew === true)
+  // Show template picker when the plan has no meals yet
+  const [showTemplatePicker, setShowTemplatePicker] = useState(plan.meals?.length === 0)
   const [tab, setTab] = useState<'plano' | 'metas' | 'anamnese' | 'evolucao' | 'pdf'>('plano')
   const [addMealOpen, setAddMealOpen] = useState(false)
   const [publishing, setPublishing] = useState(false)
@@ -906,9 +906,9 @@ export default function DietEditor({ patient, plan, professionalId, isNew }: {
       {/* Topbar */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between no-print">
         <div className="flex items-center gap-3">
-          <Link href="/pro/pacientes" className="btn btn-ghost btn-sm">← Pacientes</Link>
+          <Link href={`/pro/pacientes/${patient.id}`} className="btn btn-ghost btn-sm">← {patient.full_name}</Link>
           <div>
-            <div className="font-bold text-gray-900">{patient.full_name}</div>
+            <div className="font-bold text-gray-900">{plan.title || 'Plano Alimentar'}</div>
             <div className="text-xs text-gray-400">{patient.goal} · {patient.weight_kg}kg · {patient.height_cm}cm</div>
           </div>
         </div>

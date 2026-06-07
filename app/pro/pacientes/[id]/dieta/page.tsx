@@ -2,8 +2,15 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 import DietEditor from './DietEditor'
 
-export default async function DietaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function DietaPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ plan?: string }>
+}) {
   const { id } = await params
+  const { plan: planId } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
@@ -17,25 +24,34 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
 
   if (!patient) notFound()
 
-  // Busca plano ativo — inclui substitutos e medidas
-  let { data: plan } = await supabase
-    .from('diet_plans')
-    .select(`*, meals(*, meal_foods(*, food:foods(*), substitutes:meal_food_substitutes(*, food:foods(*))))`)
-    .eq('patient_id', id)
-    .eq('active', true)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
+  // Busca plano específico se ?plan=ID passado; caso contrário pega o ativo mais recente
+  let plan = null
 
-  let isNew = false
-  if (!plan) {
-    const { data: newPlan } = await supabase
+  if (planId) {
+    const { data } = await supabase
       .from('diet_plans')
-      .insert({ patient_id: id, professional_id: user.id, title: 'Plano Alimentar', active: true })
-      .select()
+      .select(`*, meals(*, meal_foods(*, food:foods(*), substitutes:meal_food_substitutes(*, food:foods(*))))`)
+      .eq('id', planId)
+      .eq('patient_id', id) // garantia: plano pertence a este paciente
       .single()
-    plan = { ...newPlan, meals: [] }
-    isNew = true
+    plan = data
+  }
+
+  if (!plan) {
+    const { data } = await supabase
+      .from('diet_plans')
+      .select(`*, meals(*, meal_foods(*, food:foods(*), substitutes:meal_food_substitutes(*, food:foods(*))))`)
+      .eq('patient_id', id)
+      .eq('active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+    plan = data
+  }
+
+  // Se não há nenhum plano, redireciona para o hub do paciente para criar um com nome
+  if (!plan) {
+    redirect(`/pro/pacientes/${id}`)
   }
 
   // Ordena refeições e alimentos
@@ -47,5 +63,5 @@ export default async function DietaPage({ params }: { params: Promise<{ id: stri
     })
   }
 
-  return <DietEditor patient={patient} plan={plan} professionalId={user.id} isNew={isNew} />
+  return <DietEditor patient={patient} plan={plan} professionalId={user.id} />
 }

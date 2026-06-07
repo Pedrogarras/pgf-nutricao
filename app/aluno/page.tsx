@@ -1,8 +1,13 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/login/actions'
+import Link from 'next/link'
 
-export default async function AlunoPage() {
+export default async function AlunoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ plan?: string }>
+}) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login?tipo=aluno')
@@ -30,14 +35,14 @@ export default async function AlunoPage() {
     )
   }
 
-  const { data: dietPlan } = await supabase
+  // Carrega todos os planos ativos e publicados
+  const { data: activePlans } = await supabase
     .from('diet_plans')
     .select(`*, meals(*, meal_foods(*, food:foods(*)))`)
     .eq('patient_id', patient.id)
+    .eq('active', true)
     .not('published_at', 'is', null)
-    .order('published_at', { ascending: false })
-    .limit(1)
-    .single()
+    .order('created_at', { ascending: false })
 
   const { data: workoutPlan } = await supabase
     .from('workout_plans')
@@ -48,7 +53,13 @@ export default async function AlunoPage() {
     .limit(1)
     .single()
 
-  const meals = dietPlan?.meals?.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order) ?? []
+  const { plan: selectedPlanId } = await searchParams
+
+  // Seleciona o plano a exibir: ?plan=ID ou o primeiro da lista
+  const plans = activePlans ?? []
+  const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? plans[0] ?? null
+
+  const meals = selectedPlan?.meals?.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order) ?? []
   const days = workoutPlan?.workout_days?.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order) ?? []
 
   function r(n: number) { return Math.round(n * 10) / 10 }
@@ -97,10 +108,10 @@ export default async function AlunoPage() {
 
       <div className="px-4 -mt-12 space-y-4">
         {/* Macro card */}
-        {dietPlan && (
+        {selectedPlan && (
           <div className="rounded-2xl p-4 shadow-xl" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
             <div className="text-[11px] font-bold uppercase tracking-wide mb-3" style={{ color: 'rgba(197,205,240,0.5)' }}>
-              Meta do dia{dietPlan.kcal_goal ? ` — ${dietPlan.kcal_goal} kcal` : ''}
+              Meta do dia{selectedPlan.kcal_goal ? ` — ${selectedPlan.kcal_goal} kcal` : ''}
             </div>
             <div className="grid grid-cols-4 gap-2 text-center">
               <div>
@@ -124,9 +135,46 @@ export default async function AlunoPage() {
         )}
 
         {/* Diet plan */}
-        {dietPlan ? (
+        {selectedPlan ? (
           <>
-            <div className="text-[10px] font-bold tracking-[2px] uppercase mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>Plano Alimentar</div>
+            {/* Plan selector — shown when more than 1 active plan */}
+            {plans.length > 1 && (
+              <div>
+                <div className="text-[10px] font-bold tracking-[2px] uppercase mb-2" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                  Plano Alimentar
+                </div>
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {plans.map(p => {
+                    const isSelected = p.id === selectedPlan.id
+                    return (
+                      <Link
+                        key={p.id}
+                        href={`/aluno?plan=${p.id}`}
+                        className="flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+                        style={isSelected ? {
+                          background: 'rgba(37,99,235,0.25)',
+                          color: '#93C5FD',
+                          border: '1px solid rgba(37,99,235,0.4)',
+                        } : {
+                          background: 'rgba(255,255,255,0.05)',
+                          color: 'rgba(255,255,255,0.4)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                        }}
+                      >
+                        {p.title || 'Plano'}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {plans.length === 1 && (
+              <div className="text-[10px] font-bold tracking-[2px] uppercase mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                Plano Alimentar
+              </div>
+            )}
+
             {meals.map((meal: {
               id: string; emoji: string; name: string; time_start: string | null; notes: string | null
               meal_foods: { id: string; food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }; quantity_g: number; quantity_description: string | null }[]
@@ -204,10 +252,10 @@ export default async function AlunoPage() {
               )
             })}
 
-            {dietPlan.notes && (
+            {selectedPlan.notes && (
               <div className="rounded-xl px-4 py-3" style={{ background: 'rgba(90,111,204,0.12)', border: '1px solid rgba(90,111,204,0.25)' }}>
                 <div className="text-xs font-bold mb-1" style={{ color: '#9BAAE6' }}>📋 Orientações</div>
-                <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,248,0.7)' }}>{dietPlan.notes}</div>
+                <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,248,0.7)' }}>{selectedPlan.notes}</div>
               </div>
             )}
 
