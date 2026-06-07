@@ -546,6 +546,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
             { href: `/pro/pacientes/${patient.id}/anamnese`,    icon: '📋', label: 'Anamnese',   desc: 'Dados clínicos' },
             { href: `/pro/pacientes/${patient.id}/metas`,       icon: '🎯', label: 'Metas',      desc: 'Objetivos e progresso' },
             { href: `/pro/pacientes/${patient.id}/medidas`,     icon: '📏', label: 'Medidas',    desc: 'Avaliações físicas' },
+            { href: `/pro/pacientes/${patient.id}/comparativo`, icon: '↔️', label: 'Comparativo', desc: 'Antes vs depois' },
             { href: `/pro/pacientes/${patient.id}/fotos`,       icon: '📸', label: 'Fotos',      desc: 'Evolução visual' },
             { href: `/pro/pacientes/${patient.id}/diario`,      icon: '📔', label: 'Diário',     desc: 'Registro alimentar' },
             { href: `/pro/pacientes/${patient.id}/aderencia`,    icon: '📊', label: 'Aderência',  desc: 'Análise do diário' },
