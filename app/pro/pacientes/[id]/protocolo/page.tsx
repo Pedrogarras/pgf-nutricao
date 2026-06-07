@@ -394,7 +394,7 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
               if (wLogs.length === 0 && !patient.auth_user_id) return null
               return (
                 <div className="card p-5">
-                  <SectionHead title="Treinos (7 dias)" href={`/pro/pacientes/${id}/treino`} linkLabel="Ver plano" />
+                  <SectionHead title="Treinos (7 dias)" href={`/pro/pacientes/${id}/treino/logs`} linkLabel="Ver histórico" />
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <div className="rounded-xl p-3 text-center"
                       style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>

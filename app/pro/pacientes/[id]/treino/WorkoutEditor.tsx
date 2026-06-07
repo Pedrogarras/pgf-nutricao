@@ -167,6 +167,7 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
           </div>
         </div>
         <div className="flex gap-2">
+          <Link href={`/pro/pacientes/${patient.id}/treino/logs`} className="btn btn-outline btn-sm">📋 Histórico</Link>
           <Link href="/pro/exercicios" className="btn btn-outline btn-sm">Gerenciar exercícios</Link>
           <button onClick={handlePublish} disabled={publishing} className="btn btn-primary btn-sm">
             {publishing ? 'Publicando...' : 'Publicar treino'}
