@@ -1,16 +1,20 @@
-export default function AgendaPage() {
-  return (
-    <div>
-      <div
-        className="sticky top-0 z-40 px-8 h-14 flex items-center"
-        style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}
-      >
-        <h1 className="text-base font-bold text-white">Agenda</h1>
-      </div>
-      <div className="p-8 text-center py-20">
-        <div className="font-semibold text-gray-600 mb-1">Agenda — em breve</div>
-        <div className="text-sm text-gray-400">Funcionalidade de agendamento será adicionada na próxima versão.</div>
-      </div>
-    </div>
-  )
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import AgendaClient from './AgendaClient'
+
+export default async function AgendaPage() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: patients } = await supabase
+    .from('patients')
+    .select('id, full_name')
+    .eq('professional_id', user.id)
+    .eq('active', true)
+    .order('full_name')
+
+  const currentMonth = new Date().toISOString().slice(0, 7)
+
+  return <AgendaClient patients={patients ?? []} initialMonth={currentMonth} />
 }
