@@ -655,14 +655,16 @@ export default async function AlunoPage({
         )}
 
         {/* Quick shortcuts */}
-        <div className="grid grid-cols-3 gap-2 mb-2 last:mb-0">
+        <div className="grid grid-cols-4 gap-2 mb-2 last:mb-0">
           {[
+            { href: '/aluno/plano',       icon: '🥗', label: 'Plano' },
             { href: '/aluno/diario',      icon: '📔', label: 'Diário' },
             { href: '/aluno/agua',        icon: '💧', label: 'Água' },
             { href: '/aluno/evolucao',    icon: '📈', label: 'Evolução' },
             { href: '/aluno/suplementos', icon: '💊', label: 'Suplementos' },
             { href: '/aluno/exames',      icon: '🔬', label: 'Exames' },
             { href: '/aluno/aderencia',   icon: '📊', label: 'Aderência' },
+            { href: '/aluno/metas',       icon: '🎯', label: 'Metas' },
           ].map(item => (
             <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1.5 rounded-xl py-3 transition-all"
               style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
