@@ -655,34 +655,30 @@ export default async function AlunoPage({
         )}
 
         {/* Quick shortcuts */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <Link
             href="/aluno/diario"
-            className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all"
+            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
             style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
-              style={{ background: 'rgba(37,99,235,0.12)' }}>
-              📔
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate">Diário</div>
-              <div className="text-[11px] truncate" style={{ color: 'rgba(197,205,240,0.4)' }}>Registrar refeições</div>
-            </div>
+            <div className="text-2xl">📔</div>
+            <div className="text-xs font-semibold text-white text-center">Diário</div>
+          </Link>
+          <Link
+            href="/aluno/agua"
+            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
+          >
+            <div className="text-2xl">💧</div>
+            <div className="text-xs font-semibold text-white text-center">Água</div>
           </Link>
           <Link
             href="/aluno/suplementos"
-            className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition-all"
+            className="flex flex-col items-center gap-2 rounded-xl px-3 py-4 transition-all"
             style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
           >
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-base flex-shrink-0"
-              style={{ background: 'rgba(16,185,129,0.12)' }}>
-              💊
-            </div>
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate">Suplementos</div>
-              <div className="text-[11px] truncate" style={{ color: 'rgba(197,205,240,0.4)' }}>Minha prescrição</div>
-            </div>
+            <div className="text-2xl">💊</div>
+            <div className="text-xs font-semibold text-white text-center">Suplementos</div>
           </Link>
         </div>
 
