@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess, updatePatient } from './actions'
+import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess, updatePatient, duplicateDietPlan } from './actions'
 
 type DietPlan = {
   id: string
@@ -291,7 +291,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               <div
                 className="grid items-center px-6 py-3 text-[10px] font-bold uppercase tracking-wider"
                 style={{
-                  gridTemplateColumns: '12px 1fr 90px 80px 210px',
+                  gridTemplateColumns: '12px 1fr 90px 80px 260px',
                   background: 'var(--dark-surface)',
                   borderBottom: '1px solid var(--dark-border)',
                   color: 'rgba(255,255,255,0.25)',
@@ -310,7 +310,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                   key={plan.id}
                   className="grid items-center px-6 py-4 transition-colors"
                   style={{
-                    gridTemplateColumns: '12px 1fr 90px 80px 210px',
+                    gridTemplateColumns: '12px 1fr 90px 80px 260px',
                     gap: '16px',
                     borderBottom: i < plans.length - 1 ? '1px solid var(--dark-border)' : undefined,
                     cursor: 'default',
@@ -417,6 +417,18 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                       title="Renomear plano"
                     >
                       Renomear
+                    </button>
+                    <button
+                      onClick={() => {
+                        const title = prompt(`Nome para a cópia de "${plan.title || 'Plano'}"?`, `${plan.title || 'Plano'} (cópia)`)
+                        if (!title) return
+                        startTransition(async () => { await duplicateDietPlan(plan.id, patient.id, title) })
+                      }}
+                      disabled={isPending}
+                      className="btn btn-ghost btn-sm"
+                      title="Duplicar plano completo (com substitutos)"
+                    >
+                      Duplicar
                     </button>
                     <button
                       onClick={() => handleDelete(plan.id, plan.title || 'Plano')}

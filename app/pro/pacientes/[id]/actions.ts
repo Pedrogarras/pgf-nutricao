@@ -24,6 +24,82 @@ export async function updatePatient(
   return { ok: true }
 }
 
+export async function duplicateDietPlan(sourcePlanId: string, patientId: string, newTitle: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // Load the source plan with all meals, foods, and substitutes
+  const { data: source } = await supabase
+    .from('diet_plans')
+    .select(`
+      kcal_goal, protein_goal_g, carbs_goal_g, fat_goal_g, notes, anamnesis,
+      meals(id, name, time_start, emoji, sort_order, notes,
+        meal_foods(id, food_id, quantity_g, quantity_description, sort_order,
+          meal_food_substitutes(food_id, quantity_g, quantity_description, sort_order)
+        )
+      )
+    `)
+    .eq('id', sourcePlanId)
+    .eq('professional_id', user.id)
+    .single()
+
+  if (!source) return { error: 'Plano não encontrado' }
+
+  // Create the new plan
+  const { data: newPlan, error: planErr } = await supabase
+    .from('diet_plans')
+    .insert({
+      patient_id: patientId,
+      professional_id: user.id,
+      title: newTitle.trim() || `Cópia — ${newTitle}`,
+      active: false,
+      kcal_goal: source.kcal_goal,
+      protein_goal_g: source.protein_goal_g,
+      carbs_goal_g: source.carbs_goal_g,
+      fat_goal_g: source.fat_goal_g,
+      notes: source.notes,
+      anamnesis: source.anamnesis,
+    })
+    .select('id')
+    .single()
+
+  if (planErr || !newPlan) return { error: planErr?.message ?? 'Erro ao duplicar' }
+
+  // Duplicate meals
+  const meals = (source.meals as { id: string; name: string; time_start: string | null; emoji: string; sort_order: number; notes: string | null; meal_foods: { id: string; food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number; meal_food_substitutes: { food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number }[] }[] }[]) ?? []
+  for (const meal of meals) {
+    const { data: newMeal } = await supabase
+      .from('meals')
+      .insert({ diet_plan_id: newPlan.id, name: meal.name, time_start: meal.time_start, emoji: meal.emoji, sort_order: meal.sort_order, notes: meal.notes })
+      .select('id')
+      .single()
+    if (!newMeal) continue
+
+    for (const mf of meal.meal_foods ?? []) {
+      const { data: newMf } = await supabase
+        .from('meal_foods')
+        .insert({ meal_id: newMeal.id, food_id: mf.food_id, quantity_g: mf.quantity_g, quantity_description: mf.quantity_description, sort_order: mf.sort_order })
+        .select('id')
+        .single()
+      if (!newMf) continue
+
+      for (const sub of mf.meal_food_substitutes ?? []) {
+        await supabase.from('meal_food_substitutes').insert({
+          meal_food_id: newMf.id,
+          food_id: sub.food_id,
+          quantity_g: sub.quantity_g,
+          quantity_description: sub.quantity_description,
+          sort_order: sub.sort_order,
+        })
+      }
+    }
+  }
+
+  revalidatePath(`/pro/pacientes/${patientId}`)
+  redirect(`/pro/pacientes/${patientId}/dieta?plan=${newPlan.id}`)
+}
+
 export async function createDietPlan(patientId: string, title: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

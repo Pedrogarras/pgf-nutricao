@@ -65,7 +65,32 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray-500">
                     <div>{p.weight_kg ? `${p.weight_kg} kg` : '—'}{p.height_cm ? ` · ${p.height_cm} cm` : ''}</div>
-                    {age && <div className="text-xs text-gray-400">{age} anos · {p.gender === 'F' ? 'F' : p.gender === 'M' ? 'M' : '—'}</div>}
+                    {(() => {
+                      const bmi = p.weight_kg && p.height_cm
+                        ? p.weight_kg / ((p.height_cm / 100) ** 2)
+                        : null
+                      const bmiLabel = bmi
+                        ? bmi < 18.5 ? 'Baixo peso'
+                        : bmi < 25 ? 'Eutrófico'
+                        : bmi < 30 ? 'Sobrepeso'
+                        : bmi < 35 ? 'Ob. I'
+                        : bmi < 40 ? 'Ob. II' : 'Ob. III'
+                        : null
+                      const bmiColor = bmi
+                        ? bmi < 18.5 ? 'text-blue-500'
+                        : bmi < 25 ? 'text-green-600'
+                        : bmi < 30 ? 'text-amber-500'
+                        : 'text-red-500'
+                        : ''
+                      return (
+                        <div className="text-xs text-gray-400 mt-0.5">
+                          {age ? `${age} anos` : ''}{age && (bmi || p.gender) ? ' · ' : ''}
+                          {p.gender === 'F' ? 'F' : p.gender === 'M' ? 'M' : ''}
+                          {bmi && (age || p.gender) ? ' · ' : ''}
+                          {bmi && <span className={`font-medium ${bmiColor}`}>IMC {bmi.toFixed(1)} ({bmiLabel})</span>}
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="px-5 py-3.5">
                     {p.auth_user_id ? (
