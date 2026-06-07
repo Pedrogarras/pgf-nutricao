@@ -185,13 +185,27 @@ interface ActivitySummary {
   diaryCount30d: number
 }
 
+interface PatientGoal {
+  id: string
+  label: string
+  metric: string
+  unit: string | null
+  target_value: number
+  current_value: number | null
+  start_value: number | null
+  direction: string
+  achieved: boolean
+  deadline: string | null
+}
+
 interface Props {
   patient: Patient
   dietPlans: DietPlan[]
   activitySummary?: ActivitySummary
+  activeGoals?: PatientGoal[]
 }
 
-export default function PatientHub({ patient, dietPlans: initialPlans, activitySummary }: Props) {
+export default function PatientHub({ patient, dietPlans: initialPlans, activitySummary, activeGoals = [] }: Props) {
   const [plans, setPlans] = useState(initialPlans)
   const [showNewPlan, setShowNewPlan] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -369,6 +383,18 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
   const initials = patient.full_name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
   const activeCount = plans.filter(p => p.active).length
 
+  // BMI calculation
+  const bmiRaw = patientData.weight_kg && patientData.height_cm
+    ? parseFloat(patientData.weight_kg) / Math.pow(parseFloat(patientData.height_cm) / 100, 2)
+    : null
+  const bmi = bmiRaw ? Math.round(bmiRaw * 10) / 10 : null
+  const bmiClass = bmi
+    ? bmi < 18.5 ? 'Baixo peso' : bmi < 25 ? 'Eutrófico' : bmi < 30 ? 'Sobrepeso' : bmi < 35 ? 'Ob. I' : bmi < 40 ? 'Ob. II' : 'Ob. III'
+    : null
+  const bmiColor = bmi
+    ? bmi < 18.5 ? '#60a5fa' : bmi < 25 ? '#4ade80' : bmi < 30 ? '#fbbf24' : '#f87171'
+    : '#9ca3af'
+
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 
@@ -427,6 +453,14 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
                   style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)' }}
                 >
                   {patientData.height_cm} cm
+                </span>
+              )}
+              {bmi && (
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: `${bmiColor}18`, color: bmiColor, border: `1px solid ${bmiColor}35` }}
+                >
+                  IMC {bmi} · {bmiClass}
                 </span>
               )}
             </div>
@@ -560,6 +594,60 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
             </div>
           )
         })()}
+
+        {/* Active goals mini-section */}
+        {activeGoals.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-[10px] font-bold tracking-[2px] uppercase" style={{ color: 'rgba(255,255,255,0.2)' }}>
+                Metas Ativas
+              </div>
+              <Link href={`/pro/pacientes/${patient.id}/metas`} className="text-xs" style={{ color: 'rgba(37,99,235,0.7)' }}>
+                Ver todas →
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {activeGoals.slice(0, 4).map(goal => {
+                const totalDelta = Math.abs((goal.target_value ?? 0) - (goal.start_value ?? goal.target_value ?? 0))
+                const progressDelta = goal.current_value != null && goal.start_value != null
+                  ? Math.abs(goal.current_value - goal.start_value) : 0
+                const pct = totalDelta > 0 ? Math.min(100, Math.round((progressDelta / totalDelta) * 100)) : 0
+                const remaining = goal.current_value != null ? Math.abs(goal.target_value - goal.current_value).toFixed(1) : null
+                const daysLeft = goal.deadline
+                  ? Math.ceil((new Date(goal.deadline + 'T12:00').getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                  : null
+                const color = pct >= 80 ? '#4ade80' : pct >= 50 ? '#60a5fa' : '#fbbf24'
+                return (
+                  <div key={goal.id} className="rounded-xl p-3.5"
+                    style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <span className="text-xs font-semibold text-white leading-tight">{goal.label}</span>
+                      {daysLeft !== null && (
+                        <span className="text-[10px] font-bold flex-shrink-0" style={{ color: daysLeft <= 7 ? '#f87171' : daysLeft <= 30 ? '#fbbf24' : 'rgba(255,255,255,0.3)' }}>
+                          {daysLeft > 0 ? `${daysLeft}d` : 'Vencida'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-baseline gap-1.5 mb-2">
+                      <span className="text-base font-black" style={{ color }}>
+                        {goal.current_value != null ? goal.current_value : '—'}{goal.unit ?? ''}
+                      </span>
+                      <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.25)' }}>
+                        / {goal.target_value}{goal.unit ?? ''}
+                        {remaining && ` · faltam ${remaining}`}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                      <div className="h-full rounded-full transition-all"
+                        style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}99, ${color})` }} />
+                    </div>
+                    <div className="text-[10px] mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>{pct}% concluído</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Section header */}
         <div className="flex items-end justify-between mb-4">

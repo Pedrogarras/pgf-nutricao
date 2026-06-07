@@ -25,6 +25,7 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
     { data: lastConsultation },
     { data: lastRecord },
     { count: diaryCount30d },
+    { data: activeGoals },
   ] = await Promise.all([
     supabase.from('diet_plans')
       .select('id, title, active, kcal_goal, created_at, published_at')
@@ -54,6 +55,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       .select('*', { count: 'exact', head: true })
       .eq('patient_id', id)
       .gte('logged_at', thirtyDaysAgo),
+    supabase.from('patient_goals')
+      .select('id, label, metric, unit, target_value, current_value, start_value, direction, achieved, deadline')
+      .eq('patient_id', id)
+      .eq('achieved', false)
+      .order('created_at'),
   ])
 
   const activitySummary = {
@@ -64,5 +70,5 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
     diaryCount30d: diaryCount30d ?? 0,
   }
 
-  return <PatientHub patient={patient} dietPlans={dietPlans ?? []} activitySummary={activitySummary} />
+  return <PatientHub patient={patient} dietPlans={dietPlans ?? []} activitySummary={activitySummary} activeGoals={activeGoals ?? []} />
 }
