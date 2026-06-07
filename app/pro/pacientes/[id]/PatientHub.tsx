@@ -3,7 +3,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess, updatePatient, duplicateDietPlan } from './actions'
 
-function WhatsAppButton({ phone, name }: { phone: string; name: string }) {
+function WhatsAppButton({ phone, name, gridMode }: { phone: string; name: string; gridMode?: boolean }) {
   const [open, setOpen] = useState(false)
   const [templates, setTemplates] = useState<Array<{ id: string; name: string; content: string; variables: string[]; category: string }>>([])
   const [chosen, setChosen] = useState<typeof templates[0] | null>(null)
@@ -49,9 +49,17 @@ function WhatsAppButton({ phone, name }: { phone: string; name: string }) {
 
   return (
     <>
+      {gridMode ? (
+        <button onClick={loadAndOpen} className="flex flex-col items-center gap-1.5 w-full h-full">
+          <span className="text-2xl">💬</span>
+          <span className="text-xs font-bold text-white">WhatsApp</span>
+          <span className="text-[10px] text-center leading-tight" style={{ color: 'rgba(255,255,255,0.3)' }}>Enviar mensagem</span>
+        </button>
+      ) : (
       <button onClick={loadAndOpen} className="btn btn-outline btn-sm" style={{ color: '#6EE7B7', borderColor: 'rgba(16,185,129,0.3)' }}>
         💬 WhatsApp
       </button>
+      )}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.82)' }}
           onClick={e => e.target === e.currentTarget && setOpen(false)}>
@@ -361,7 +369,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               onClick={() => { setEditError(''); setShowEditPatient(true) }}
               className="btn btn-ghost btn-sm"
             >
-              Editar dados
+              ✏️ Editar
             </button>
             <a
               href={`/pro/pacientes/${patient.id}/relatorio`}
@@ -380,56 +388,56 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             >
               🖨️ Imprimir
             </a>
-            <Link
-              href={`/pro/pacientes/${patient.id}/anamnese`}
-              className="btn btn-outline btn-sm"
-            >
-              Anamnese
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/metas`}
-              className="btn btn-outline btn-sm"
-            >
-              🎯 Metas
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/medidas`}
-              className="btn btn-outline btn-sm"
-            >
-              Medidas
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/fotos`}
-              className="btn btn-outline btn-sm"
-            >
-              📸 Fotos
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/diario`}
-              className="btn btn-outline btn-sm"
-            >
-              📔 Diário
-            </Link>
-            <WhatsAppButton phone={patient.phone ?? ''} name={patient.full_name} />
-            <Link
-              href={`/pro/pacientes/${patient.id}/notas`}
-              className="btn btn-outline btn-sm"
-            >
-              📝 Notas
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/suplementos`}
-              className="btn btn-outline btn-sm"
-            >
-              💊 Suplementos
-            </Link>
-            <Link
-              href={`/pro/pacientes/${patient.id}/treino`}
-              className="btn btn-outline btn-sm"
-            >
-              Prescrição de Treino
-            </Link>
           </div>
+        </div>
+
+        {/* Navigation grid */}
+        <div className="grid grid-cols-5 gap-3 mb-10">
+          {[
+            { href: `/pro/pacientes/${patient.id}/anamnese`,    icon: '📋', label: 'Anamnese',   desc: 'Histórico clínico' },
+            { href: `/pro/pacientes/${patient.id}/metas`,       icon: '🎯', label: 'Metas',      desc: 'Objetivos e progresso' },
+            { href: `/pro/pacientes/${patient.id}/medidas`,     icon: '📏', label: 'Medidas',    desc: 'Avaliações físicas' },
+            { href: `/pro/pacientes/${patient.id}/fotos`,       icon: '📸', label: 'Fotos',      desc: 'Evolução visual' },
+            { href: `/pro/pacientes/${patient.id}/diario`,      icon: '📔', label: 'Diário',     desc: 'Registro alimentar' },
+            { href: `/pro/pacientes/${patient.id}/exames`,      icon: '🔬', label: 'Exames',     desc: 'Laboratoriais' },
+            { href: `/pro/pacientes/${patient.id}/suplementos`, icon: '💊', label: 'Suplementos',desc: 'Prescrição ativa' },
+            { href: `/pro/pacientes/${patient.id}/treino`,      icon: '🏋️', label: 'Treino',     desc: 'Prescrição física' },
+            { href: `/pro/pacientes/${patient.id}/notas`,       icon: '📝', label: 'Notas',      desc: 'Anotações clínicas' },
+          ].map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex flex-col items-center gap-1.5 p-4 rounded-2xl transition-all group"
+              style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(37,99,235,0.4)'
+                e.currentTarget.style.background = 'rgba(37,99,235,0.06)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--dark-border)'
+                e.currentTarget.style.background = 'var(--dark-surface)'
+              }}
+            >
+              <span className="text-2xl">{item.icon}</span>
+              <span className="text-xs font-bold text-white">{item.label}</span>
+              <span className="text-[10px] text-center leading-tight" style={{ color: 'rgba(255,255,255,0.3)' }}>{item.desc}</span>
+            </Link>
+          ))}
+          {/* WhatsApp card */}
+          {patient.phone ? (
+            <div className="flex flex-col items-center gap-1.5 p-4 rounded-2xl transition-all cursor-pointer"
+              style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = 'rgba(18,222,107,0.3)'
+                e.currentTarget.style.background = 'rgba(18,222,107,0.04)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = 'var(--dark-border)'
+                e.currentTarget.style.background = 'var(--dark-surface)'
+              }}>
+              <WhatsAppButton phone={patient.phone ?? ''} name={patient.full_name} gridMode />
+            </div>
+          ) : null}
         </div>
 
         {/* Section header */}

@@ -18,6 +18,9 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
     { data: anamnesis },
     { data: photoCount },
     { data: diaryCount },
+    { data: supplements },
+    { data: labResults },
+    { data: goals },
   ] = await Promise.all([
     supabase.from('patients').select('*').eq('id', id).eq('professional_id', user.id).single(),
     supabase.from('anthropometric_records').select('*').eq('patient_id', id).order('measured_at', { ascending: false }).limit(12),
@@ -25,6 +28,9 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
     supabase.from('patient_anamnesis').select('*').eq('patient_id', id).eq('professional_id', user.id).maybeSingle(),
     supabase.from('progress_photos').select('id', { count: 'exact', head: true }).eq('patient_id', id),
     supabase.from('diary_entries').select('id', { count: 'exact', head: true }).eq('patient_id', id),
+    supabase.from('supplement_prescriptions').select('*').eq('patient_id', id).eq('professional_id', user.id).eq('active', true).order('timing'),
+    supabase.from('lab_results').select('*').eq('patient_id', id).eq('professional_id', user.id).order('date', { ascending: false }).limit(50),
+    supabase.from('patient_goals').select('*').eq('patient_id', id).eq('professional_id', user.id).eq('active', true),
   ])
 
   if (!patient) redirect('/pro/pacientes')
@@ -349,6 +355,144 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
                 </div>
               </section>
             )}
+
+            {/* Supplements */}
+            {supplements && supplements.length > 0 && (
+              <section>
+                <h2 className="text-xs font-bold tracking-[2px] uppercase text-pgf-600 mb-3">Suplementação Prescrita</h2>
+                <div className="card overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr style={{ background: '#f8f9fa' }}>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Suplemento</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Dosagem</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Momento</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Orientação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supplements.map((s: { id: string; name: string; brand: string | null; dosage: string; timing: string; with_food: boolean; instructions: string | null }) => {
+                        const timingLabels: Record<string, string> = {
+                          ao_acordar: 'Ao acordar', cafe_manha: 'Café da manhã', pre_treino: 'Pré-treino',
+                          pos_treino: 'Pós-treino', almoco: 'Almoço', lanche: 'Lanche',
+                          jantar: 'Jantar', antes_dormir: 'Antes de dormir', qualquer_hora: 'Qualquer horário',
+                        }
+                        return (
+                          <tr key={s.id} className="border-t border-gray-100">
+                            <td className="px-4 py-2 font-medium text-gray-800">
+                              {s.name}{s.brand && <span className="text-xs text-gray-400 ml-1">({s.brand})</span>}
+                            </td>
+                            <td className="px-4 py-2 text-gray-600">{s.dosage}</td>
+                            <td className="px-4 py-2 text-gray-600">{timingLabels[s.timing] ?? s.timing}</td>
+                            <td className="px-4 py-2 text-gray-500 text-xs">
+                              {s.with_food && 'Com refeição. '}{s.instructions ?? ''}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {/* Goals */}
+            {goals && goals.length > 0 && (
+              <section>
+                <h2 className="text-xs font-bold tracking-[2px] uppercase text-pgf-600 mb-3">Metas Ativas</h2>
+                <div className="grid grid-cols-3 gap-3">
+                  {goals.map((g: { id: string; metric: string; target_value: number; current_value: number | null; unit: string | null }) => {
+                    const pct = g.current_value != null && g.target_value
+                      ? Math.min(100, Math.round(Math.abs(g.current_value - g.target_value) / Math.abs((g.current_value || g.target_value) - g.target_value + 0.001) * 100))
+                      : 0
+                    const metricLabels: Record<string, string> = {
+                      peso: 'Peso', gordura: 'Gordura corporal', massa: 'Massa magra',
+                      cintura: 'Cintura', quadril: 'Quadril', imc: 'IMC',
+                    }
+                    return (
+                      <div key={g.id} className="card p-3 text-center">
+                        <div className="text-xs text-gray-500 mb-1">{metricLabels[g.metric] ?? g.metric}</div>
+                        <div className="text-lg font-bold text-gray-800">{g.target_value}{g.unit && <span className="text-xs text-gray-400 ml-1">{g.unit}</span>}</div>
+                        {g.current_value != null && (
+                          <div className="text-xs text-gray-400 mt-1">Atual: {g.current_value} {g.unit}</div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
+            {/* Latest lab results */}
+            {labResults && labResults.length > 0 && (() => {
+              // Get the most recent date
+              const latestDate = labResults[0].date
+              const latestResults = labResults.filter((r: { date: string }) => r.date === latestDate)
+              const statusLabels: Record<string, string> = {
+                normal: 'Normal', alto: 'Elevado', baixo: 'Baixo',
+                critico_alto: 'Crítico ↑', critico_baixo: 'Crítico ↓',
+              }
+              const statusColors: Record<string, string> = {
+                normal: '#22c55e', alto: '#f59e0b', baixo: '#3b82f6',
+                critico_alto: '#ef4444', critico_baixo: '#ef4444',
+              }
+              const byPanel: Record<string, typeof latestResults> = {}
+              for (const r of latestResults) {
+                const key = r.panel_name ?? 'Outros'
+                if (!byPanel[key]) byPanel[key] = []
+                byPanel[key].push(r)
+              }
+              return (
+                <section>
+                  <h2 className="text-xs font-bold tracking-[2px] uppercase text-pgf-600 mb-1">Exames Laboratoriais</h2>
+                  <p className="text-xs text-gray-400 mb-3">
+                    Última coleta: {new Date(latestDate + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                  </p>
+                  {Object.entries(byPanel).map(([panel, panelResults]) => (
+                    <div key={panel} className="mb-4">
+                      <div className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wide">{panel}</div>
+                      <div className="card overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr style={{ background: '#f8f9fa' }}>
+                              <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Exame</th>
+                              <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500">Resultado</th>
+                              <th className="text-center px-4 py-2 text-xs font-semibold text-gray-500">Status</th>
+                              <th className="text-center px-4 py-2 text-xs font-semibold text-gray-500">Referência</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(panelResults as Array<{ id: string; exam_name: string; value: number | null; unit: string | null; status: string | null; reference_min: number | null; reference_max: number | null }>).map(r => (
+                              <tr key={r.id} className="border-t border-gray-100">
+                                <td className="px-4 py-2 text-gray-800">{r.exam_name}</td>
+                                <td className="px-4 py-2 text-right font-semibold text-gray-800">
+                                  {r.value != null ? `${r.value}${r.unit ? ` ${r.unit}` : ''}` : '—'}
+                                </td>
+                                <td className="px-4 py-2 text-center">
+                                  {r.status && (
+                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                                      style={{ background: `${statusColors[r.status]}20`, color: statusColors[r.status] }}>
+                                      {statusLabels[r.status]}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="px-4 py-2 text-center text-xs text-gray-400">
+                                  {r.reference_min != null && r.reference_max != null
+                                    ? `${r.reference_min} – ${r.reference_max}`
+                                    : r.reference_min != null ? `≥ ${r.reference_min}`
+                                    : r.reference_max != null ? `≤ ${r.reference_max}` : ''}
+                                  {r.unit && r.reference_min != null || r.reference_max != null ? ` ${r.unit ?? ''}` : ''}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ))}
+                </section>
+              )
+            })()}
 
             {/* Clinical notes */}
             {(anamnesis?.clinical_notes || patient.notes) && (
