@@ -27,19 +27,26 @@ export async function createDietPlan(patientId: string, title: string) {
 
 export async function deleteDietPlan(planId: string, patientId: string) {
   const supabase = await createClient()
-  await supabase.from('diet_plans').delete().eq('id', planId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  // Verify professional owns this plan before deleting
+  await supabase.from('diet_plans').delete().eq('id', planId).eq('professional_id', user.id)
   revalidatePath(`/pro/pacientes/${patientId}`)
 }
 
 export async function renameDietPlan(planId: string, title: string, patientId: string) {
   const supabase = await createClient()
-  await supabase.from('diet_plans').update({ title: title.trim() }).eq('id', planId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  await supabase.from('diet_plans').update({ title: title.trim() }).eq('id', planId).eq('professional_id', user.id)
   revalidatePath(`/pro/pacientes/${patientId}`)
 }
 
 export async function togglePlanActive(planId: string, active: boolean, patientId: string) {
   const supabase = await createClient()
-  await supabase.from('diet_plans').update({ active }).eq('id', planId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  await supabase.from('diet_plans').update({ active }).eq('id', planId).eq('professional_id', user.id)
   revalidatePath(`/pro/pacientes/${patientId}`)
 }
 

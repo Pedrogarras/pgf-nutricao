@@ -13,7 +13,8 @@ interface LocalFood extends Food { }
 interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number }
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
 interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
-interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; meals: LocalMeal[] }
+interface LocalAnamnesis { allergies?: string | null; dislikes?: string | null; preferences?: string | null; meals_per_day?: string | null; supplements?: string | null; medications?: string | null; pathologies?: string | null; sleep_quality?: string | null; stress_level?: string | null; notes?: string | null }
+interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; meals: LocalMeal[]; anamnesis?: LocalAnamnesis | null }
 
 // ===================== HELPERS =====================
 function calcMacros(qty: number, food: LocalFood) {
@@ -1272,7 +1273,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
         )}
 
         {tab === 'metas' && <MetasTab plan={plan} patient={patient} planId={plan.id} onSaved={showToast} />}
-        {tab === 'anamnese' && <AnamneseTab patient={patient} planId={plan.id} onSaved={showToast} />}
+        {tab === 'anamnese' && <AnamneseTab patient={patient} planId={plan.id} anamnesis={plan.anamnesis} onSaved={showToast} />}
         {tab === 'evolucao' && <EvolucaoTab patientId={patient.id} professionalId={professionalId} />}
         {tab === 'pdf' && <PdfPreview patient={patient} plan={plan} meals={meals} totals={totals} />}
       </div>
@@ -1398,8 +1399,9 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
 }
 
 // ===================== ANAMNESE TAB =====================
-function AnamneseTab({ patient, planId, onSaved }: { patient: Patient; planId: string; onSaved: (msg: string) => void }) {
+function AnamneseTab({ patient, planId, anamnesis, onSaved }: { patient: Patient; planId: string; anamnesis?: LocalAnamnesis | null; onSaved: (msg: string) => void }) {
   const [saving, setSaving] = useState(false)
+  const a = anamnesis ?? {}
 
   async function handleSave(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -1407,11 +1409,16 @@ function AnamneseTab({ patient, planId, onSaved }: { patient: Patient; planId: s
     const fd = new FormData(e.currentTarget)
     await saveDietPlan(planId, {
       anamnesis: {
-        allergies: fd.get('allergies'), dislikes: fd.get('dislikes'),
-        preferences: fd.get('preferences'), meals_per_day: fd.get('meals_per_day'),
-        supplements: fd.get('supplements'), medications: fd.get('medications'),
-        pathologies: fd.get('pathologies'), sleep_quality: fd.get('sleep_quality'),
-        stress_level: fd.get('stress_level'), notes: fd.get('notes'),
+        allergies: fd.get('allergies') || null,
+        dislikes: fd.get('dislikes') || null,
+        preferences: fd.get('preferences') || null,
+        meals_per_day: fd.get('meals_per_day') || null,
+        supplements: fd.get('supplements') || null,
+        medications: fd.get('medications') || null,
+        pathologies: fd.get('pathologies') || null,
+        sleep_quality: fd.get('sleep_quality') || null,
+        stress_level: fd.get('stress_level') || null,
+        notes: fd.get('notes') || null,
       }
     })
     setSaving(false)
@@ -1424,38 +1431,45 @@ function AnamneseTab({ patient, planId, onSaved }: { patient: Patient; planId: s
         <div className="card">
           <div className="card-header"><span className="card-title">Anamnese Alimentar</span></div>
           <div className="card-body space-y-4">
-            <div><label className="form-label">Alergias e intolerâncias</label><input name="allergies" className="form-input" placeholder="Lactose, glúten..." /></div>
-            <div><label className="form-label">Alimentos que não gosta</label><input name="dislikes" className="form-input" placeholder="Fígado, peixe seco..." /></div>
-            <div><label className="form-label">Alimentos preferidos</label><input name="preferences" className="form-input" placeholder="Frango, ovos, frutas..." /></div>
+            <div><label className="form-label">Alergias e intolerâncias</label><input name="allergies" defaultValue={a.allergies ?? ''} className="form-input" placeholder="Lactose, glúten..." /></div>
+            <div><label className="form-label">Alimentos que não gosta</label><input name="dislikes" defaultValue={a.dislikes ?? ''} className="form-input" placeholder="Fígado, peixe seco..." /></div>
+            <div><label className="form-label">Alimentos preferidos</label><input name="preferences" defaultValue={a.preferences ?? ''} className="form-input" placeholder="Frango, ovos, frutas..." /></div>
             <div>
               <label className="form-label">Refeições por dia</label>
-              <select name="meals_per_day" className="form-select">
+              <select name="meals_per_day" defaultValue={a.meals_per_day ?? '5'} className="form-select">
                 <option value="3">3 refeições</option>
                 <option value="4">4 refeições</option>
                 <option value="5">5 refeições</option>
                 <option value="6">6 refeições</option>
               </select>
             </div>
-            <div><label className="form-label">Observações</label><textarea name="notes" className="form-textarea" rows={3} placeholder="Rotina alimentar, horários especiais..." /></div>
+            <div><label className="form-label">Observações</label><textarea name="notes" defaultValue={a.notes ?? ''} className="form-textarea" rows={3} placeholder="Rotina alimentar, horários especiais..." /></div>
           </div>
         </div>
         <div className="card">
           <div className="card-header"><span className="card-title">Histórico Clínico</span></div>
           <div className="card-body space-y-4">
-            <div><label className="form-label">Patologias</label><input name="pathologies" className="form-input" placeholder="Diabetes, hipertensão..." /></div>
-            <div><label className="form-label">Medicamentos em uso</label><input name="medications" className="form-input" placeholder="Metformina, anticoncepcional..." /></div>
-            <div><label className="form-label">Suplementação atual</label><input name="supplements" className="form-input" placeholder="Whey protein, vitamina D..." /></div>
+            <div><label className="form-label">Patologias</label><input name="pathologies" defaultValue={a.pathologies ?? ''} className="form-input" placeholder="Diabetes, hipertensão..." /></div>
+            <div><label className="form-label">Medicamentos em uso</label><input name="medications" defaultValue={a.medications ?? ''} className="form-input" placeholder="Metformina, anticoncepcional..." /></div>
+            <div><label className="form-label">Suplementação atual</label><input name="supplements" defaultValue={a.supplements ?? ''} className="form-input" placeholder="Whey protein, vitamina D..." /></div>
             <div>
               <label className="form-label">Qualidade do sono</label>
-              <select name="sleep_quality" className="form-select">
+              <select name="sleep_quality" defaultValue={a.sleep_quality ?? 'regular'} className="form-select">
                 <option value="ruim">Ruim (menos de 5h)</option>
                 <option value="regular">Regular (5–7h)</option>
                 <option value="bom">Bom (7–9h)</option>
               </select>
             </div>
-            <div><label className="form-label">Nível de estresse (1–10)</label><input name="stress_level" type="number" min="1" max="10" className="form-input" placeholder="7" /></div>
+            <div><label className="form-label">Nível de estresse (1–10)</label><input name="stress_level" type="number" min="1" max="10" defaultValue={a.stress_level ?? ''} className="form-input" placeholder="7" /></div>
           </div>
         </div>
+      </div>
+      {/* Patient context (read-only) */}
+      <div className="mt-4 rounded-xl px-5 py-3 text-xs" style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.12)', color: 'rgba(107,114,128,0.8)' }}>
+        Paciente: <strong>{patient.full_name}</strong>
+        {patient.weight_kg && <> · {patient.weight_kg} kg</>}
+        {patient.height_cm && <> · {patient.height_cm} cm</>}
+        {patient.gender && <> · {patient.gender === 'F' ? 'Feminino' : patient.gender === 'M' ? 'Masculino' : ''}</>}
       </div>
       <div className="flex justify-end mt-4">
         <button type="submit" disabled={saving} className="btn btn-primary">{saving ? 'Salvando...' : 'Salvar Anamnese'}</button>
@@ -1465,10 +1479,58 @@ function AnamneseTab({ patient, planId, onSaved }: { patient: Patient; planId: s
 }
 
 // ===================== EVOLUÇÃO TAB =====================
+type CheckIn = { id: string; measured_at: string; weight_kg: number | null; body_fat_pct: number | null; muscle_mass_kg: number | null; waist_cm: number | null; hip_cm: number | null; arm_cm: number | null; thigh_cm: number | null; calf_cm: number | null; adherence_pct: number | null; notes: string | null }
+
+function WeightSparkline({ records }: { records: CheckIn[] }) {
+  const weights = [...records].reverse().map(r => r.weight_kg).filter((w): w is number => w != null)
+  if (weights.length < 2) return null
+  const W = 160, H = 40, PAD = 4
+  const min = Math.min(...weights), max = Math.max(...weights)
+  const range = max - min || 1
+  const pts = weights.map((w, i) => {
+    const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
+    const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
+    return `${x},${y}`
+  })
+  const trend = weights[weights.length - 1] - weights[0]
+  const color = trend <= 0 ? '#22c55e' : '#ef4444'
+  return (
+    <div className="mb-6 card p-4">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Progressão de Peso</span>
+        <span style={{ color, fontSize: 12, fontWeight: 600 }}>
+          {trend > 0 ? '+' : ''}{r(trend)} kg total
+        </span>
+      </div>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {weights.map((w, i) => {
+          const x = PAD + (i / (weights.length - 1)) * (W - PAD * 2)
+          const y = H - PAD - ((w - min) / range) * (H - PAD * 2)
+          return <circle key={i} cx={x} cy={y} r="3" fill={color} />
+        })}
+      </svg>
+      <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+        <span>{new Date([...records].reverse()[0].measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+        <span>{new Date(records[0].measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}</span>
+      </div>
+    </div>
+  )
+}
+
 function EvolucaoTab({ patientId, professionalId }: { patientId: string; professionalId: string }) {
-  const [records, setRecords] = useState<{ id: string; measured_at: string; weight_kg: number | null; body_fat_pct: number | null; waist_cm: number | null; hip_cm: number | null; adherence_pct: number | null; notes: string | null }[]>([])
+  const [records, setRecords] = useState<CheckIn[]>([])
   const [addOpen, setAddOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch(`/api/records?patient_id=${patientId}`)
+      .then(r => r.json())
+      .then(d => setRecords(d.records ?? []))
+      .finally(() => setFetching(false))
+  }, [patientId])
 
   async function handleAdd(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -1477,7 +1539,7 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
     const res = await fetch('/api/records', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patient_id: patientId, professional_id: professionalId, measured_at: fd.get('measured_at'), weight_kg: fd.get('weight_kg') || null, body_fat_pct: fd.get('body_fat_pct') || null, waist_cm: fd.get('waist_cm') || null, hip_cm: fd.get('hip_cm') || null, adherence_pct: fd.get('adherence_pct') || null, notes: fd.get('notes') || null })
+      body: JSON.stringify({ patient_id: patientId, professional_id: professionalId, measured_at: fd.get('measured_at'), weight_kg: fd.get('weight_kg') || null, body_fat_pct: fd.get('body_fat_pct') || null, muscle_mass_kg: fd.get('muscle_mass_kg') || null, waist_cm: fd.get('waist_cm') || null, hip_cm: fd.get('hip_cm') || null, arm_cm: fd.get('arm_cm') || null, thigh_cm: fd.get('thigh_cm') || null, calf_cm: fd.get('calf_cm') || null, adherence_pct: fd.get('adherence_pct') || null, notes: fd.get('notes') || null })
     })
     const data = await res.json()
     if (data.record) setRecords(prev => [data.record, ...prev])
@@ -1485,35 +1547,89 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
     setLoading(false)
   }
 
+  async function handleDelete(id: string) {
+    if (!confirm('Excluir este check-in?')) return
+    setDeletingId(id)
+    await fetch(`/api/records/${id}`, { method: 'DELETE' })
+    setRecords(prev => prev.filter(r => r.id !== id))
+    setDeletingId(null)
+  }
+
+  // Compute weight delta vs previous check-in (records sorted newest first)
+  function weightDelta(idx: number): number | null {
+    const curr = records[idx].weight_kg
+    const prev = records[idx + 1]?.weight_kg ?? null
+    if (curr == null || prev == null) return null
+    return r(curr - prev)
+  }
+
   return (
     <div>
-      <div className="flex justify-end mb-4">
+      <WeightSparkline records={records} />
+
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-sm text-gray-500">{records.length} check-in{records.length !== 1 ? 's' : ''} registrado{records.length !== 1 ? 's' : ''}</div>
         <button onClick={() => setAddOpen(true)} className="btn btn-primary">+ Novo check-in</button>
       </div>
+
       <div className="card">
         <table className="w-full">
           <thead>
             <tr>
-              {['Data', 'Peso', '% Gordura', 'Cintura', 'Quadril', 'Adesão', 'Obs'].map(h => (
-                <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b">{h}</th>
+              {['Data', 'Peso', 'Var.', '% Gord.', 'M. Musc.', 'Cintura', 'Quadril', 'Adesão', 'Obs', ''].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {records.map(rec => (
-              <tr key={rec.id} className="border-b border-gray-50">
-                <td className="px-5 py-3 font-semibold text-sm">{new Date(rec.measured_at + 'T12:00').toLocaleDateString('pt-BR')}</td>
-                <td className="px-5 py-3 text-sm">{rec.weight_kg ? `${rec.weight_kg} kg` : '—'}</td>
-                <td className="px-5 py-3 text-sm">{rec.body_fat_pct ? `${rec.body_fat_pct}%` : '—'}</td>
-                <td className="px-5 py-3 text-sm">{rec.waist_cm ? `${rec.waist_cm} cm` : '—'}</td>
-                <td className="px-5 py-3 text-sm">{rec.hip_cm ? `${rec.hip_cm} cm` : '—'}</td>
-                <td className="px-5 py-3">{rec.adherence_pct ? <span className="badge badge-green">{rec.adherence_pct}%</span> : '—'}</td>
-                <td className="px-5 py-3 text-xs text-gray-400">{rec.notes ?? ''}</td>
-              </tr>
-            ))}
-            {!records.length && (
-              <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-400 text-sm">
-                Nenhum check-in registrado. Clique em "Novo check-in" para começar.
+            {records.map((rec, idx) => {
+              const delta = weightDelta(idx)
+              return (
+                <tr key={rec.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                  <td className="px-4 py-3 font-semibold text-sm whitespace-nowrap">{new Date(rec.measured_at + 'T12:00').toLocaleDateString('pt-BR')}</td>
+                  <td className="px-4 py-3 text-sm font-medium">{rec.weight_kg ? `${rec.weight_kg} kg` : '—'}</td>
+                  <td className="px-4 py-3 text-sm">
+                    {delta == null ? <span className="text-gray-300">—</span> : (
+                      <span style={{ color: delta < 0 ? '#22c55e' : delta > 0 ? '#ef4444' : '#6b7280', fontWeight: 600, fontSize: 12 }}>
+                        {delta > 0 ? '+' : ''}{delta} kg
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-sm">{rec.body_fat_pct ? `${rec.body_fat_pct}%` : '—'}</td>
+                  <td className="px-4 py-3 text-sm">{rec.muscle_mass_kg ? `${rec.muscle_mass_kg} kg` : '—'}</td>
+                  <td className="px-4 py-3 text-sm">{rec.waist_cm ? `${rec.waist_cm} cm` : '—'}</td>
+                  <td className="px-4 py-3 text-sm">{rec.hip_cm ? `${rec.hip_cm} cm` : '—'}</td>
+                  <td className="px-4 py-3">
+                    {rec.adherence_pct
+                      ? <span className={`badge text-[10px] ${rec.adherence_pct >= 80 ? 'badge-green' : rec.adherence_pct >= 50 ? 'badge-blue' : 'badge-red'}`}>{rec.adherence_pct}%</span>
+                      : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400 max-w-[140px] truncate">{rec.notes ?? ''}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => handleDelete(rec.id)}
+                      disabled={deletingId === rec.id}
+                      className="text-gray-300 hover:text-red-400 transition-colors text-xs"
+                      title="Excluir"
+                    >
+                      {deletingId === rec.id ? '...' : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      )}
+                    </button>
+                  </td>
+                </tr>
+              )
+            })}
+            {fetching && (
+              <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">
+                Carregando...
+              </td></tr>
+            )}
+            {!fetching && !records.length && (
+              <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">
+                Nenhum check-in registrado. Clique em &ldquo;Novo check-in&rdquo; para começar.
               </td></tr>
             )}
           </tbody>
@@ -1526,11 +1642,25 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
             <h3 className="font-bold text-lg mb-4">Novo Check-in</h3>
             <form onSubmit={handleAdd} className="space-y-4">
               <div><label className="form-label">Data da avaliação</label><input name="measured_at" type="date" required defaultValue={new Date().toISOString().split('T')[0]} className="form-input" /></div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Composição corporal</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div><label className="form-label">Peso (kg)</label><input name="weight_kg" type="number" step="0.1" className="form-input" /></div>
+                  <div><label className="form-label">% Gordura</label><input name="body_fat_pct" type="number" step="0.1" className="form-input" /></div>
+                  <div><label className="form-label">M. Muscular (kg)</label><input name="muscle_mass_kg" type="number" step="0.1" className="form-input" /></div>
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Circunferências (cm)</div>
+                <div className="grid grid-cols-4 gap-3">
+                  <div><label className="form-label">Cintura</label><input name="waist_cm" type="number" step="0.1" className="form-input" /></div>
+                  <div><label className="form-label">Quadril</label><input name="hip_cm" type="number" step="0.1" className="form-input" /></div>
+                  <div><label className="form-label">Braço</label><input name="arm_cm" type="number" step="0.1" className="form-input" /></div>
+                  <div><label className="form-label">Coxa</label><input name="thigh_cm" type="number" step="0.1" className="form-input" /></div>
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="form-label">Peso (kg)</label><input name="weight_kg" type="number" step="0.1" className="form-input" /></div>
-                <div><label className="form-label">% Gordura</label><input name="body_fat_pct" type="number" step="0.1" className="form-input" /></div>
-                <div><label className="form-label">Cintura (cm)</label><input name="waist_cm" type="number" step="0.1" className="form-input" /></div>
-                <div><label className="form-label">Quadril (cm)</label><input name="hip_cm" type="number" step="0.1" className="form-input" /></div>
+                <div><label className="form-label">Panturrilha (cm)</label><input name="calf_cm" type="number" step="0.1" className="form-input" /></div>
                 <div><label className="form-label">Adesão (%)</label><input name="adherence_pct" type="number" min="0" max="100" className="form-input" /></div>
               </div>
               <div><label className="form-label">Observações</label><textarea name="notes" className="form-textarea" rows={2} /></div>

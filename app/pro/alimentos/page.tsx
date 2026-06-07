@@ -67,7 +67,7 @@ export default function AlimentosPage() {
             {(['all', 'TACO', 'custom'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-ghost'}`}>
-                {f === 'all' ? 'Todos' : f === 'TACO' ? 'ðŸ‡§ðŸ‡· TACO' : 'â­ Personalizados'}
+                {f === 'all' ? 'Todos' : f === 'TACO' ? 'TACO' : 'Personalizados'}
               </button>
             ))}
           </div>
@@ -94,7 +94,7 @@ export default function AlimentosPage() {
                   <td className="px-4 py-3 text-xs text-gray-400">{food.portion_description ?? `${food.portion_g}g`}</td>
                   <td className="px-4 py-3">
                     <span className={`badge text-[10px] ${food.source === 'TACO' ? 'badge-green' : 'badge-blue'}`}>
-                      {food.source === 'TACO' ? 'TACO' : 'â­ Meu'}
+                      {food.source === 'TACO' ? 'TACO' : 'Meu'}
                     </span>
                   </td>
                 </tr>
@@ -134,7 +134,7 @@ export default function AlimentosPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="form-label">Calorias (kcal) *</label><input name="kcal" type="number" step="0.1" required className="form-input" /></div>
-                <div><label className="form-label">ProteÃ­na (g)</label><input name="protein_g" type="number" step="0.1" defaultValue="0" className="form-input" /></div>
+                <div><label className="form-label">Proteína (g)</label><input name="protein_g" type="number" step="0.1" defaultValue="0" className="form-input" /></div>
                 <div><label className="form-label">Carboidrato (g)</label><input name="carbs_g" type="number" step="0.1" defaultValue="0" className="form-input" /></div>
                 <div><label className="form-label">Gordura (g)</label><input name="fat_g" type="number" step="0.1" defaultValue="0" className="form-input" /></div>
                 <div><label className="form-label">Fibra (g)</label><input name="fiber_g" type="number" step="0.1" defaultValue="0" className="form-input" /></div>
@@ -146,7 +146,7 @@ export default function AlimentosPage() {
                   <option value="">Selecione</option>
                   <option>Cereais e derivados</option><option>Carnes bovinas</option>
                   <option>Aves</option><option>Pescados</option><option>Ovos</option>
-                  <option>LaticÃ­nios</option><option>Leguminosas</option>
+                  <option>Laticínios</option><option>Leguminosas</option>
                   <option>Verduras e hortaliÃ§as</option><option>Frutas</option>
                   <option>Gorduras e Ã³leos</option><option>AÃ§Ãºcares</option>
                   <option>Oleaginosas</option><option>Bebidas</option><option>Suplementos</option>
