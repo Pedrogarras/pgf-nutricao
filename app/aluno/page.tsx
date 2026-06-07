@@ -89,7 +89,7 @@ export default async function AlunoPage({
   const [{ data: todayDiary }, { data: todayWater }, { data: recentDiary }] = await Promise.all([
     supabase
       .from('diary_entries')
-      .select('id, total_kcal, meal_name, logged_at')
+      .select('id, total_kcal, total_protein_g, total_carbs_g, total_fat_g, meal_name, logged_at')
       .eq('patient_id', patient.id)
       .eq('logged_at', todayDate),
     supabase
@@ -106,8 +106,12 @@ export default async function AlunoPage({
       .order('logged_at', { ascending: false }),
   ])
 
-  const todayKcal = (todayDiary ?? []).reduce((s: number, e: { total_kcal: number | null }) => s + (e.total_kcal ?? 0), 0)
-  const todayMeals = (todayDiary ?? []).length
+  type DiaryRow = { total_kcal: number | null; total_protein_g: number | null; total_carbs_g: number | null; total_fat_g: number | null }
+  const todayKcal    = (todayDiary ?? []).reduce((s: number, e: DiaryRow) => s + (e.total_kcal ?? 0), 0)
+  const todayProtein = (todayDiary ?? []).reduce((s: number, e: DiaryRow) => s + (e.total_protein_g ?? 0), 0)
+  const todayCarbs   = (todayDiary ?? []).reduce((s: number, e: DiaryRow) => s + (e.total_carbs_g ?? 0), 0)
+  const todayFat     = (todayDiary ?? []).reduce((s: number, e: DiaryRow) => s + (e.total_fat_g ?? 0), 0)
+  const todayMeals   = (todayDiary ?? []).length
   const waterMl = todayWater?.amount_ml ?? 0
   const waterGoal = todayWater?.goal_ml ?? 2000
 
@@ -274,6 +278,81 @@ export default async function AlunoPage({
             </div>
           </div>
         </div>
+
+        {/* Today consumed vs plan targets */}
+        {selectedPlan && todayMeals > 0 && (() => {
+          const kcalGoal  = selectedPlan.kcal_goal ?? totals.kcal
+          const protGoal  = selectedPlan.protein_goal_g ?? (totals.protein > 0 ? Math.round(totals.protein) : null)
+          const carbsGoal = selectedPlan.carbs_goal_g   ?? (totals.carbs   > 0 ? Math.round(totals.carbs)   : null)
+          const fatGoal   = selectedPlan.fat_goal_g     ?? (totals.fat     > 0 ? Math.round(totals.fat)     : null)
+          const kcalPct   = kcalGoal  > 0 ? Math.min(115, Math.round((todayKcal    / kcalGoal)  * 100)) : null
+          const protPct   = protGoal  && protGoal  > 0 ? Math.min(115, Math.round((todayProtein / protGoal)  * 100)) : null
+          const carbsPct  = carbsGoal && carbsGoal > 0 ? Math.min(115, Math.round((todayCarbs   / carbsGoal) * 100)) : null
+          const fatPct    = fatGoal   && fatGoal   > 0 ? Math.min(115, Math.round((todayFat     / fatGoal)   * 100)) : null
+          const barColor  = (pct: number) => pct >= 100 ? '#22c55e' : pct >= 75 ? '#60a5fa' : pct >= 50 ? '#fbbf24' : '#f87171'
+          return (
+            <div className="rounded-2xl p-4 shadow-xl"
+              style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)' }}>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest" style={{ color: 'rgba(197,205,240,0.4)' }}>
+                  Consumo de hoje
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
+                  style={{ background: 'rgba(37,99,235,0.12)', color: '#93C5FD' }}>
+                  {todayMeals} ref. registradas
+                </span>
+              </div>
+              {/* kcal big number + bar */}
+              <div className="flex items-end justify-between mb-2">
+                <div className="text-2xl font-black text-white">
+                  {Math.round(todayKcal)}
+                  <span className="text-sm font-medium ml-1" style={{ color: 'rgba(197,205,240,0.4)' }}>kcal</span>
+                </div>
+                {kcalGoal > 0 && (
+                  <div className="text-right">
+                    <span className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>meta </span>
+                    <span className="text-xs font-bold" style={{ color: 'rgba(197,205,240,0.5)' }}>{Math.round(kcalGoal)}</span>
+                    {kcalPct !== null && (
+                      <span className="ml-2 text-xs font-black" style={{ color: barColor(kcalPct) }}>{kcalPct}%</span>
+                    )}
+                  </div>
+                )}
+              </div>
+              {kcalGoal > 0 && kcalPct !== null && (
+                <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full transition-all"
+                    style={{ width: `${Math.min(100, kcalPct)}%`, background: barColor(kcalPct) }} />
+                </div>
+              )}
+              {/* Macros mini bars */}
+              {(protPct !== null || carbsPct !== null || fatPct !== null) && (
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: 'Prot', consumed: Math.round(todayProtein), goal: protGoal,  pct: protPct,  color: '#93C5FD' },
+                    { label: 'Carb', consumed: Math.round(todayCarbs),   goal: carbsGoal, pct: carbsPct, color: '#FCD34D' },
+                    { label: 'Gord', consumed: Math.round(todayFat),     goal: fatGoal,   pct: fatPct,   color: '#FCA5A5' },
+                  ].map(m => (
+                    <div key={m.label}>
+                      <div className="flex items-baseline justify-between mb-1">
+                        <span className="text-sm font-black" style={{ color: m.color }}>{m.consumed}g</span>
+                        {m.goal && (
+                          <span className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>/{m.goal}g</span>
+                        )}
+                      </div>
+                      {m.pct !== null && (
+                        <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                          <div className="h-full rounded-full"
+                            style={{ width: `${Math.min(100, m.pct)}%`, background: m.color }} />
+                        </div>
+                      )}
+                      <div className="text-[10px] mt-1" style={{ color: 'rgba(197,205,240,0.4)' }}>{m.label}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Macro card */}
         {selectedPlan && (() => {
