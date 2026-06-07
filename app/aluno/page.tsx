@@ -813,6 +813,11 @@ export default async function AlunoPage({
               href: '/aluno/treino', icon: '🏋️', label: 'Treino',
               hint: null, dot: null,
             },
+            {
+              href: '/aluno/consultas', icon: '📅', label: 'Consultas',
+              hint: nextConsultation ? 'Próxima ↑' : null,
+              dot: nextConsultation ? 'blue' : null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
