@@ -10,6 +10,22 @@ export async function GET(request: NextRequest) {
   const days = parseInt(request.nextUrl.searchParams.get('days') ?? '30')
   if (!patientId) return NextResponse.json({ error: 'patient_id obrigatório' }, { status: 400 })
 
+  // Determine professional_id: could be a professional (user IS professional)
+  // or a patient (user is auth_user of patient, professional_id is on the patient record)
+  let professionalId = user.id
+  const { data: patientRecord } = await supabase
+    .from('patients')
+    .select('id, professional_id')
+    .eq('id', patientId)
+    .single()
+  if (patientRecord && patientRecord.professional_id) {
+    // Verify caller is either the professional or the patient themselves
+    const isOwner = patientRecord.professional_id === user.id
+    const { data: selfPatient } = await supabase.from('patients').select('id').eq('id', patientId).eq('auth_user_id', user.id).maybeSingle()
+    if (!isOwner && !selfPatient) return NextResponse.json({ error: 'Sem permissão' }, { status: 403 })
+    professionalId = patientRecord.professional_id
+  }
+
   const since = new Date()
   since.setDate(since.getDate() - days)
   const sinceStr = since.toISOString().split('T')[0]
@@ -19,7 +35,7 @@ export async function GET(request: NextRequest) {
     .from('diary_entries')
     .select('logged_at, total_kcal, total_protein_g, total_carbs_g, total_fat_g, meal_name')
     .eq('patient_id', patientId)
-    .eq('professional_id', user.id)
+    .eq('professional_id', professionalId)
     .gte('logged_at', sinceStr)
     .order('logged_at', { ascending: true })
 
@@ -28,7 +44,7 @@ export async function GET(request: NextRequest) {
     .from('diet_plans')
     .select('kcal_goal, meals(meal_foods(quantity_g, food:foods(kcal, protein_g, carbs_g, fat_g, portion_g)))')
     .eq('patient_id', patientId)
-    .eq('professional_id', user.id)
+    .eq('professional_id', professionalId)
     .eq('active', true)
     .not('published_at', 'is', null)
     .order('created_at', { ascending: false })
