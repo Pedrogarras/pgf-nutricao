@@ -25,6 +25,7 @@ const NAV = [
     { href: '/pro/receitas',    label: 'Receitas' },
     { href: '/pro/templates',   label: 'Templates de Refeição' },
     { href: '/pro/mensagens',   label: 'Templates de Mensagem' },
+    { href: '/pro/mensagens/enviar', label: '📣 Envio em Massa' },
     { href: '/pro/exercicios',  label: 'Exercícios' },
     { href: '/pro/agenda',      label: 'Agenda' },
   ]},

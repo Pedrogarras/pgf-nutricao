@@ -142,9 +142,16 @@ export default function MensagensPage() {
         style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}
       >
         <h1 className="text-base font-bold text-white">Templates de Mensagem</h1>
-        <button onClick={() => openEditModal()} className="btn btn-primary btn-sm">
-          + Novo Template
-        </button>
+        <div className="flex items-center gap-2">
+          <a href="/pro/mensagens/enviar"
+            className="btn btn-sm"
+            style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}>
+            📣 Envio em Massa
+          </a>
+          <button onClick={() => openEditModal()} className="btn btn-primary btn-sm">
+            + Novo Template
+          </button>
+        </div>
       </div>
 
       <div className="p-8">
