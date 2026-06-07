@@ -73,6 +73,15 @@ export default async function AlunoPage({
     .limit(1)
     .single()
 
+  // Active goals for patient
+  const { data: activeGoals } = await supabase
+    .from('patient_goals')
+    .select('id, label, metric, unit, target_value, current_value, start_value, direction, deadline, achieved')
+    .eq('patient_id', patient.id)
+    .eq('achieved', false)
+    .order('created_at')
+    .limit(4)
+
   const { plan: selectedPlanId } = await searchParams
 
   // Seleciona o plano a exibir: ?plan=ID ou o primeiro da lista
@@ -594,6 +603,55 @@ export default async function AlunoPage({
             </div>
             <CheckInForm lastWeight={null} />
           </div>
+        )}
+
+        {/* Active goals */}
+        {activeGoals && activeGoals.length > 0 && (
+          <>
+            <div className="text-[10px] font-bold tracking-[2px] uppercase mt-4" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              Minhas Metas
+            </div>
+            <div className="rounded-xl overflow-hidden" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+              <div className="divide-y" style={{ borderColor: 'var(--dark-border)' }}>
+                {activeGoals.map((goal: { id: string; label: string; target_value: number; current_value: number | null; start_value: number | null; unit: string; direction: string; deadline: string | null }) => {
+                  const start = goal.start_value
+                  const current = goal.current_value
+                  const target = goal.target_value
+                  const pct = start != null && current != null && Math.abs(target - start) > 0
+                    ? Math.min(100, Math.round((Math.abs(current - start) / Math.abs(target - start)) * 100))
+                    : 0
+                  const remaining = current != null ? Math.abs(target - current).toFixed(1) : null
+                  return (
+                    <div key={goal.id} className="px-4 py-3">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <div className="text-sm font-semibold text-white">{goal.label}</div>
+                        <div className="text-xs font-bold" style={{ color: 'rgba(147,197,253,0.7)' }}>
+                          {current ?? '—'}{goal.unit}
+                          {remaining != null && (
+                            <span style={{ color: 'rgba(197,205,240,0.35)' }}> → {target}{goal.unit}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.07)' }}>
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, background: pct >= 80 ? '#22c55e' : 'linear-gradient(90deg, #2563EB, #60A5FA)' }}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>{pct}% concluído</span>
+                        {goal.deadline && (
+                          <span className="text-[10px]" style={{ color: 'rgba(197,205,240,0.3)' }}>
+                            📅 {new Date(goal.deadline + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </>
         )}
 
         {/* Diary shortcut */}
