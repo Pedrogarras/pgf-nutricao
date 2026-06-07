@@ -16,6 +16,9 @@ const NAV = [
     { href: '/pro/dieta',      label: 'Prescrição Dietética' },
     { href: '/pro/treino',     label: 'Prescrição de Treino' },
   ]},
+  { label: 'Análise', items: [
+    { href: '/pro/relatorios',  label: '📊 Relatórios' },
+  ]},
   { label: 'Ferramentas', items: [
     { href: '/pro/calculadora', label: '🧮 Calculadora Nutricional' },
     { href: '/pro/alimentos',   label: 'Banco de Alimentos' },
