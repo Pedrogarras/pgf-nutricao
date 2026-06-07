@@ -7,12 +7,14 @@ type Patient = {
   goal: string | null; weight_kg: number | null; height_cm: number | null
   date_of_birth: string | null; gender: string | null; auth_user_id: string | null
   lastCheckIn?: { measured_at: string; weight_kg: number | null; adherence_pct: number | null } | null
+  lastDiary?: { logged_at: string; total_kcal: number | null } | null
+  loggedToday?: boolean
 }
 
 export default function PatientList({ patients }: { patients: Patient[] }) {
   const [search, setSearch] = useState('')
-  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'stale'>('name')
-  const [filterAccess, setFilterAccess] = useState<'all' | 'active' | 'inactive'>('all')
+  const [sortBy, setSortBy] = useState<'name' | 'lastCheckin' | 'stale' | 'lastDiary'>('name')
+  const [filterAccess, setFilterAccess] = useState<'all' | 'active' | 'inactive' | 'logged_today'>('all')
 
   const filtered = patients
     .filter(p =>
@@ -23,6 +25,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
     .filter(p => {
       if (filterAccess === 'active') return !!p.auth_user_id
       if (filterAccess === 'inactive') return !p.auth_user_id
+      if (filterAccess === 'logged_today') return !!p.loggedToday
       return true
     })
     .sort((a, b) => {
@@ -37,6 +40,11 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
         const db = b.lastCheckIn?.measured_at ?? '1900'
         return da.localeCompare(db) // oldest first = most attention needed
       }
+      if (sortBy === 'lastDiary') {
+        const da = a.lastDiary?.logged_at ?? '1900'
+        const db = b.lastDiary?.logged_at ?? '1900'
+        return db.localeCompare(da)
+      }
       return 0
     })
 
@@ -45,6 +53,8 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
     const days = Math.floor((Date.now() - new Date(p.lastCheckIn.measured_at + 'T12:00').getTime()) / (1000 * 60 * 60 * 24))
     return days > 30
   }).length
+
+  const loggedTodayCount = patients.filter(p => p.loggedToday).length
 
   return (
     <>
@@ -58,13 +68,19 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
         <select value={sortBy} onChange={e => setSortBy(e.target.value as typeof sortBy)} className="form-select w-auto text-sm">
           <option value="name">↑ A–Z Nome</option>
           <option value="lastCheckin">↓ Check-in recente</option>
+          <option value="lastDiary">↓ Diário recente</option>
           <option value="stale">⚠ Sem check-in (atenção)</option>
         </select>
-        <div className="flex gap-1">
-          {(['all', 'active', 'inactive'] as const).map(v => (
+        <div className="flex gap-1 flex-wrap">
+          {([
+            { v: 'all', label: 'Todos' },
+            { v: 'active', label: '✅ Com acesso' },
+            { v: 'inactive', label: '⬜ Sem acesso' },
+            { v: 'logged_today', label: `📔 Hoje (${loggedTodayCount})` },
+          ] as const).map(({ v, label }) => (
             <button key={v} onClick={() => setFilterAccess(v)}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${filterAccess === v ? 'bg-pgf-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-              {v === 'all' ? 'Todos' : v === 'active' ? '✅ Com acesso' : '⬜ Sem acesso'}
+              {label}
             </button>
           ))}
         </div>
@@ -77,7 +93,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
         <table className="w-full">
           <thead>
             <tr>
-              {['Paciente', 'Objetivo', 'Dados', 'Último check-in', 'Acesso', 'Ações'].map(h => (
+              {['Paciente', 'Objetivo', 'Dados', 'Último check-in', 'Diário', 'Acesso', 'Ações'].map(h => (
                 <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b">
                   {h}
                 </th>
@@ -163,6 +179,29 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                     )}
                   </td>
                   <td className="px-5 py-3.5">
+                    {p.lastDiary ? (() => {
+                      const todayStr = new Date().toISOString().split('T')[0]
+                      const daysSince = Math.floor((Date.now() - new Date(p.lastDiary!.logged_at + 'T12:00').getTime()) / (1000 * 60 * 60 * 24))
+                      const isToday = p.lastDiary!.logged_at === todayStr
+                      const isStale = daysSince > 7
+                      return (
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            {isToday && <div className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0" style={{ boxShadow: '0 0 4px rgba(74,222,128,0.6)' }} />}
+                            <span className="text-xs font-medium" style={{ color: isToday ? '#4ade80' : isStale ? '#f87171' : '#9ca3af' }}>
+                              {isToday ? 'Hoje' : `${daysSince}d atrás`}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5">
+                            {new Date(p.lastDiary!.logged_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          </div>
+                        </div>
+                      )
+                    })() : (
+                      <span className="text-xs text-gray-300">Sem registro</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
                     {p.auth_user_id ? (
                       <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 4px rgba(74,222,128,0.6)' }} />
@@ -200,7 +239,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
               )
             })}
             {!filtered.length && (
-              <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400 text-sm">
+              <tr><td colSpan={7} className="px-5 py-10 text-center text-gray-400 text-sm">
                 {search ? `Nenhum paciente encontrado para "${search}".` : (
                   <>
                     <div className="font-semibold text-gray-600 mb-1">Nenhum paciente cadastrado</div>

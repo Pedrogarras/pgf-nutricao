@@ -15,28 +15,45 @@ export default async function PacientesPage() {
     .eq('active', true)
     .order('full_name')
 
-  // Fetch the most recent check-in for each patient (latest measured_at + weight)
+  // Fetch the most recent check-in and diary entry for each patient
   const patientIds = (patients ?? []).map(p => p.id)
   let latestCheckIns: Record<string, { measured_at: string; weight_kg: number | null; adherence_pct: number | null }> = {}
+  let latestDiaries: Record<string, { logged_at: string; total_kcal: number | null }> = {}
+
   if (patientIds.length > 0) {
-    const { data: checkIns } = await supabase
-      .from('anthropometric_records')
-      .select('patient_id, measured_at, weight_kg, adherence_pct')
-      .in('patient_id', patientIds)
-      .eq('professional_id', user.id)
-      .order('measured_at', { ascending: false })
+    const [{ data: checkIns }, { data: diaryEntries }] = await Promise.all([
+      supabase
+        .from('anthropometric_records')
+        .select('patient_id, measured_at, weight_kg, adherence_pct')
+        .in('patient_id', patientIds)
+        .eq('professional_id', user.id)
+        .order('measured_at', { ascending: false }),
+      supabase
+        .from('diary_entries')
+        .select('patient_id, logged_at, total_kcal')
+        .in('patient_id', patientIds)
+        .order('logged_at', { ascending: false }),
+    ])
     // Keep only the latest per patient
     for (const ci of checkIns ?? []) {
       if (!latestCheckIns[ci.patient_id]) {
         latestCheckIns[ci.patient_id] = { measured_at: ci.measured_at, weight_kg: ci.weight_kg, adherence_pct: ci.adherence_pct }
       }
     }
+    for (const d of diaryEntries ?? []) {
+      if (!latestDiaries[d.patient_id]) {
+        latestDiaries[d.patient_id] = { logged_at: d.logged_at, total_kcal: d.total_kcal }
+      }
+    }
   }
 
   // Merge into patients
+  const todayStr = new Date().toISOString().split('T')[0]
   const enrichedPatients = (patients ?? []).map(p => ({
     ...p,
     lastCheckIn: latestCheckIns[p.id] ?? null,
+    lastDiary: latestDiaries[p.id] ?? null,
+    loggedToday: latestDiaries[p.id]?.logged_at === todayStr,
   }))
 
   return (
