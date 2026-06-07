@@ -78,6 +78,9 @@ export default function AlunoDiarioPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [toast, setToast] = useState('')
 
+  // Plan targets for comparison
+  const [planTargets, setPlanTargets] = useState<{ kcal: number | null; protein: number | null; carbs: number | null; fat: number | null }>({ kcal: null, protein: null, carbs: null, fat: null })
+
   // Plan log modal
   const [planLogOpen, setPlanLogOpen] = useState(false)
   const [planMeals, setPlanMeals] = useState<PlanMeal[]>([])
@@ -102,6 +105,48 @@ export default function AlunoDiarioPage() {
   const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => { fetchEntries(selectedDate) }, [selectedDate])
+
+  // Load plan targets once on mount
+  useEffect(() => {
+    async function loadTargets() {
+      try {
+        const supabase = (await import('@/lib/supabase/client')).createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+        const { data: patient } = await supabase.from('patients').select('id').eq('auth_user_id', user.id).single()
+        if (!patient) return
+        const { data: plan } = await supabase
+          .from('diet_plans')
+          .select('kcal_goal, meals(meal_foods(quantity_g, food:foods(kcal, protein_g, carbs_g, fat_g, portion_g)))')
+          .eq('patient_id', patient.id)
+          .eq('active', true)
+          .not('published_at', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (!plan) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const meals = (plan.meals ?? []) as any[]
+        const t = meals.reduce((acc: { kcal: number; protein: number; carbs: number; fat: number }, m: { meal_foods: { quantity_g: number; food: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number } }[] }) => {
+          m.meal_foods?.forEach(mf => {
+            const r = mf.quantity_g / (mf.food?.portion_g || 100)
+            acc.kcal += (mf.food?.kcal ?? 0) * r
+            acc.protein += (mf.food?.protein_g ?? 0) * r
+            acc.carbs += (mf.food?.carbs_g ?? 0) * r
+            acc.fat += (mf.food?.fat_g ?? 0) * r
+          })
+          return acc
+        }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+        setPlanTargets({
+          kcal: plan.kcal_goal || (t.kcal > 0 ? Math.round(t.kcal) : null),
+          protein: t.protein > 0 ? Math.round(t.protein) : null,
+          carbs: t.carbs > 0 ? Math.round(t.carbs) : null,
+          fat: t.fat > 0 ? Math.round(t.fat) : null,
+        })
+      } catch { /* ignore */ }
+    }
+    loadTargets()
+  }, [])
 
   async function fetchEntries(date: string) {
     setLoading(true)
@@ -409,19 +454,66 @@ export default function AlunoDiarioPage() {
         {/* Day totals */}
         {entries.length > 0 && (
           <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="text-xs text-white/40 font-semibold uppercase tracking-wide mb-2">Total do dia</div>
-            <div className="grid grid-cols-4 gap-2 text-center">
-              {[
-                { label: 'Kcal', value: Math.round(dayTotals.kcal), color: 'text-white' },
-                { label: 'Prot', value: `${Math.round(dayTotals.protein)}g`, color: 'text-blue-400' },
-                { label: 'Carb', value: `${Math.round(dayTotals.carbs)}g`, color: 'text-amber-400' },
-                { label: 'Gord', value: `${Math.round(dayTotals.fat)}g`, color: 'text-red-400' },
-              ].map(m => (
-                <div key={m.label}>
-                  <div className={`text-lg font-black ${m.color}`}>{m.value}</div>
-                  <div className="text-[10px] text-white/30 font-semibold uppercase">{m.label}</div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-xs text-white/40 font-semibold uppercase tracking-wide">Total do dia</div>
+              {planTargets.kcal && (
+                <div className="text-[10px] text-white/25">meta: {planTargets.kcal} kcal</div>
+              )}
+            </div>
+            {/* Kcal progress bar */}
+            {planTargets.kcal ? (
+              <>
+                <div className="flex items-baseline gap-2 mb-1.5">
+                  <span className="text-2xl font-black text-white leading-none">{Math.round(dayTotals.kcal)}</span>
+                  <span className="text-sm text-white/30">/ {planTargets.kcal} kcal</span>
+                  <span className="ml-auto text-xs font-bold" style={{
+                    color: (() => {
+                      const pct = (dayTotals.kcal / planTargets.kcal) * 100
+                      return pct >= 90 && pct <= 110 ? '#4ade80' : pct > 110 ? '#f87171' : '#fcd34d'
+                    })()
+                  }}>
+                    {Math.round((dayTotals.kcal / planTargets.kcal) * 100)}%
+                  </span>
                 </div>
-              ))}
+                <div className="h-2 rounded-full overflow-hidden mb-3" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <div className="h-full rounded-full transition-all" style={{
+                    width: `${Math.min(100, (dayTotals.kcal / planTargets.kcal) * 100)}%`,
+                    background: (() => {
+                      const pct = (dayTotals.kcal / planTargets.kcal) * 100
+                      return pct >= 90 && pct <= 110 ? '#4ade80' : pct > 110 ? '#f87171' : '#fcd34d'
+                    })()
+                  }} />
+                </div>
+              </>
+            ) : (
+              <div className="text-2xl font-black text-white mb-3">{Math.round(dayTotals.kcal)} kcal</div>
+            )}
+            {/* Macro row */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Proteína', actual: dayTotals.protein, target: planTargets.protein, color: '#818cf8' },
+                { label: 'Carboidrato', actual: dayTotals.carbs, target: planTargets.carbs, color: '#fcd34d' },
+                { label: 'Gordura', actual: dayTotals.fat, target: planTargets.fat, color: '#f97316' },
+              ].map(m => {
+                const pct = m.actual > 0 && m.target ? Math.min(120, Math.round((m.actual / m.target) * 100)) : null
+                return (
+                  <div key={m.label} className="rounded-lg p-2.5" style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <div className="flex items-baseline justify-between mb-1">
+                      <span className="text-[10px] text-white/30 uppercase font-semibold">{m.label}</span>
+                      {pct != null && <span className="text-[10px] font-bold" style={{ color: m.color }}>{pct}%</span>}
+                    </div>
+                    <div className="text-sm font-black" style={{ color: m.color }}>
+                      {Math.round(m.actual)}g
+                      {m.target && <span className="text-[10px] font-normal text-white/20 ml-0.5">/{m.target}g</span>}
+                    </div>
+                    {m.target && (
+                      <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (m.actual / m.target) * 100)}%`, background: m.color + 'CC' }} />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         )}

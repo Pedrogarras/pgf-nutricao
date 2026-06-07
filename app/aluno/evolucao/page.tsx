@@ -13,6 +13,13 @@ interface Record {
   adherence_pct: number | null
 }
 
+interface Goal {
+  metric: string
+  target_value: number
+  direction: string
+  label: string
+}
+
 const METRICS = [
   { key: 'weight_kg',      label: 'Peso',       unit: 'kg', color: '#3B82F6', icon: '⚖️' },
   { key: 'body_fat_pct',   label: 'Gordura',    unit: '%',  color: '#F87171', icon: '📊' },
@@ -22,9 +29,18 @@ const METRICS = [
 
 type MetricKey = (typeof METRICS)[number]['key']
 
+// Maps chart metric key → patient_goals.metric values
+const METRIC_TO_GOAL: Record<MetricKey, string[]> = {
+  weight_kg:      ['peso'],
+  body_fat_pct:   ['gordura'],
+  muscle_mass_kg: ['massa', 'massa_muscular'],
+  waist_cm:       ['cintura'],
+}
+
 export default function EvolucaoPage() {
   const supabase = createClient()
   const [records, setRecords] = useState<Record[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
   const [activeMetric, setActiveMetric] = useState<MetricKey>('weight_kg')
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -40,13 +56,21 @@ export default function EvolucaoPage() {
         .from('patients').select('id').eq('auth_user_id', user.id).single()
       if (!patient) return
 
-      const { data } = await supabase
-        .from('anthropometric_records')
-        .select('id, measured_at, weight_kg, body_fat_pct, muscle_mass_kg, waist_cm, adherence_pct')
-        .eq('patient_id', patient.id)
-        .order('measured_at', { ascending: true })
+      const [{ data: recordsData }, { data: goalsData }] = await Promise.all([
+        supabase
+          .from('anthropometric_records')
+          .select('id, measured_at, weight_kg, body_fat_pct, muscle_mass_kg, waist_cm, adherence_pct')
+          .eq('patient_id', patient.id)
+          .order('measured_at', { ascending: true }),
+        supabase
+          .from('patient_goals')
+          .select('metric, target_value, direction, label')
+          .eq('patient_id', patient.id)
+          .eq('achieved', false),
+      ])
 
-      setRecords(data ?? [])
+      setRecords(recordsData ?? [])
+      setGoals(goalsData ?? [])
       setLoading(false)
     }
     load()
@@ -64,6 +88,11 @@ export default function EvolucaoPage() {
   const pts = records
     .map(r => ({ date: r.measured_at, value: r[activeMetric] as number | null, rec: r }))
     .filter(p => p.value !== null) as { date: string; value: number; rec: Record }[]
+
+  // Find active goal for the current metric
+  const activeGoal = goals.find(g =>
+    METRIC_TO_GOAL[activeMetric]?.includes((g.metric ?? '').toLowerCase())
+  ) ?? null
 
   const latest = records[records.length - 1]
   const first = records[0]
@@ -175,15 +204,38 @@ export default function EvolucaoPage() {
 
           {/* Chart */}
           <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between flex-wrap gap-2">
               <span className="text-sm font-bold" style={{ color: metric.color }}>{metric.label} ({metric.unit})</span>
-              {delta !== null && (
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  (lowerBetter ? delta < 0 : delta > 0) ? 'text-emerald-400' : 'text-red-400'
-                }`} style={{ background: (lowerBetter ? delta < 0 : delta > 0) ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)' }}>
-                  {delta > 0 ? '+' : ''}{delta.toFixed(1)}{metric.unit} total
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {activeGoal && (() => {
+                  const currentVal = pts.length > 0 ? pts[pts.length - 1].value : null
+                  const start = pts.length > 0 ? pts[0].value : null
+                  const target = activeGoal.target_value
+                  const lowerG = activeGoal.direction === 'decrease'
+                  const isAchieved = currentVal != null && (lowerG ? currentVal <= target : currentVal >= target)
+                  const totalDelta = Math.abs(target - (start ?? target))
+                  const progressDelta = currentVal != null && start != null ? Math.abs(currentVal - start) : 0
+                  const pct = totalDelta > 0 ? Math.min(100, Math.round((progressDelta / totalDelta) * 100)) : 0
+                  return (
+                    <span
+                      className="text-[11px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1"
+                      style={{
+                        background: isAchieved ? 'rgba(34,197,94,0.15)' : 'rgba(74,222,128,0.08)',
+                        color: isAchieved ? '#4ade80' : 'rgba(74,222,128,0.8)',
+                        border: `1px solid ${isAchieved ? 'rgba(34,197,94,0.3)' : 'rgba(74,222,128,0.2)'}`,
+                      }}>
+                      🎯 Meta {target}{metric.unit} · {isAchieved ? '✓ atingida!' : `${pct}%`}
+                    </span>
+                  )
+                })()}
+                {delta !== null && (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    (lowerBetter ? delta < 0 : delta > 0) ? 'text-emerald-400' : 'text-red-400'
+                  }`} style={{ background: (lowerBetter ? delta < 0 : delta > 0) ? 'rgba(52,211,153,0.1)' : 'rgba(248,113,113,0.1)' }}>
+                    {delta > 0 ? '+' : ''}{delta.toFixed(1)}{metric.unit}
+                  </span>
+                )}
+              </div>
             </div>
 
             {pts.length < 2 ? (
@@ -232,6 +284,27 @@ export default function EvolucaoPage() {
                   <polygon points={chart.areaPoints} fill="url(#water-grad)" />
                   <polyline points={chart.linePoints} fill="none"
                     stroke={metric.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+                  {/* Goal target line */}
+                  {activeGoal && (() => {
+                    const gv = activeGoal.target_value
+                    if (gv < chart.min || gv > chart.max) return null
+                    const gy = chart.yp(gv)
+                    return (
+                      <>
+                        <line
+                          x1={PAD.left} y1={gy}
+                          x2={svgW - PAD.right} y2={gy}
+                          stroke="rgba(74,222,128,0.55)" strokeWidth="1.5" strokeDasharray="5,4"
+                        />
+                        <text
+                          x={svgW - PAD.right - 2} y={gy - 3}
+                          textAnchor="end" fontSize="9" fill="rgba(74,222,128,0.75)" fontWeight="600">
+                          {gv}{metric.unit}
+                        </text>
+                      </>
+                    )
+                  })()}
 
                   {/* Points */}
                   {pts.map((p, i) => (

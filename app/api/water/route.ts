@@ -7,11 +7,40 @@ export async function GET(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const date = request.nextUrl.searchParams.get('date') ?? new Date().toISOString().split('T')[0]
+  const daysParam = request.nextUrl.searchParams.get('days')
 
   // Determine patient_id
   const { data: patient } = await supabase
     .from('patients').select('id').eq('auth_user_id', user.id).single()
   if (!patient) return NextResponse.json({ error: 'Paciente não encontrado' }, { status: 404 })
+
+  // Range query: return last N days of water records
+  if (daysParam) {
+    const n = Math.min(90, Math.max(1, parseInt(daysParam) || 7))
+    const dates: string[] = []
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      dates.push(d.toISOString().split('T')[0])
+    }
+    const since = dates[0]
+    const { data: rows } = await supabase
+      .from('water_intake')
+      .select('date, amount_ml, goal_ml')
+      .eq('patient_id', patient.id)
+      .gte('date', since)
+      .order('date', { ascending: true })
+
+    const byDate: Record<string, { amount_ml: number; goal_ml: number }> = {}
+    for (const r of rows ?? []) byDate[r.date] = { amount_ml: r.amount_ml, goal_ml: r.goal_ml }
+
+    const history = dates.map(d => ({
+      date: d,
+      amount_ml: byDate[d]?.amount_ml ?? 0,
+      goal_ml: byDate[d]?.goal_ml ?? 2000,
+    }))
+    return NextResponse.json({ history })
+  }
 
   const { data } = await supabase
     .from('water_intake')
