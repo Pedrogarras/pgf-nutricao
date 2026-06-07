@@ -1,0 +1,29 @@
+{
+  "name": "PGF Nutrição",
+  "short_name": "PGF",
+  "description": "Plataforma de nutrição e treino personalizado",
+  "start_url": "/aluno",
+  "display": "standalone",
+  "background_color": "#06060A",
+  "theme_color": "#2563EB",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-pgf-branco.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-pgf-branco.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["health", "fitness", "food"],
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "scope": "/",
+  "prefer_related_applications": false
+}
