@@ -403,6 +403,12 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             </Link>
             <WhatsAppButton phone={patient.phone ?? ''} name={patient.full_name} />
             <Link
+              href={`/pro/pacientes/${patient.id}/suplementos`}
+              className="btn btn-outline btn-sm"
+            >
+              💊 Suplementos
+            </Link>
+            <Link
               href={`/pro/pacientes/${patient.id}/treino`}
               className="btn btn-outline btn-sm"
             >

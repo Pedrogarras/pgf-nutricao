@@ -181,6 +181,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                       <Link href={`/pro/pacientes/${p.id}/diario`} className="btn btn-outline btn-sm text-xs" title="Diário alimentar">📔</Link>
                       <Link href={`/pro/pacientes/${p.id}/fotos`} className="btn btn-outline btn-sm text-xs" title="Fotos de progresso">📸</Link>
                       <Link href={`/pro/pacientes/${p.id}/metas`} className="btn btn-outline btn-sm text-xs" title="Metas clínicas">🎯</Link>
+                      <Link href={`/pro/pacientes/${p.id}/suplementos`} className="btn btn-outline btn-sm text-xs" title="Suplementos prescritos">💊</Link>
                       {p.phone && (
                         <a
                           href={`https://wa.me/55${p.phone.replace(/\D/g, '')}`}
