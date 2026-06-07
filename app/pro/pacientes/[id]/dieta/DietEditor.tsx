@@ -4,7 +4,8 @@ import Link from 'next/link'
 import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
-  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal
+  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal,
+  reorderMeal, reorderMealFood
 } from './actions'
 
 // ===================== TIPOS =====================
@@ -640,7 +641,7 @@ function EditFoodModal({ mf, onClose, onSaved }: {
 }
 
 // ===================== MEAL FOOD ROW =====================
-function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSubUpdated, onFullUpdate }: {
+function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSubUpdated, onFullUpdate, onMoveUp, onMoveDown, isFirst, isLast: isLastFood }: {
   mf: LocalMealFood
   onQtyChange: (id: string, qty: number) => void
   onRemove: (id: string) => void
@@ -648,6 +649,10 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
   onSubRemoved: (mfId: string, subId: string) => void
   onSubUpdated: (mfId: string, updatedSub: LocalSubstitute) => void
   onFullUpdate: (updatedMf: LocalMealFood) => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isFirst: boolean
+  isLast: boolean
 }) {
   const [addSubOpen, setAddSubOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -733,6 +738,25 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
           >
             + OU
           </button>
+          {/* Reorder food */}
+          <div className="flex flex-col gap-0" style={{ lineHeight: 1 }}>
+            <button
+              disabled={isFirst}
+              onClick={onMoveUp}
+              className="text-gray-200 hover:text-pgf-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              title="Mover alimento para cima"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button
+              disabled={isLastFood}
+              onClick={onMoveDown}
+              className="text-gray-200 hover:text-pgf-500 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+              title="Mover alimento para baixo"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
           <button
             onClick={() => onRemove(mf.id)}
             className="text-gray-200 hover:text-red-400 text-base transition-colors w-5 text-center"
@@ -871,10 +895,14 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
 }
 
 // ===================== MEAL CARD =====================
-function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
+function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, isFirst, isLast }: {
   meal: LocalMeal; planId: string
   onUpdate: (updated: LocalMeal) => void
   onRemoveMeal: (mealId: string) => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  isFirst: boolean
+  isLast: boolean
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -1014,6 +1042,25 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
             <span className="text-amber-600 font-semibold hidden sm:block">C {r(total.carbs)}g</span>
             <span className="text-red-500 font-semibold hidden sm:block">G {r(total.fat)}g</span>
           </div>
+          {/* Reorder arrows */}
+          <div className="flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
+            <button
+              disabled={isFirst}
+              onClick={onMoveUp}
+              className="text-gray-300 hover:text-pgf-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors leading-none"
+              title="Mover para cima"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </button>
+            <button
+              disabled={isLast}
+              onClick={onMoveDown}
+              className="text-gray-300 hover:text-pgf-600 disabled:opacity-20 disabled:cursor-not-allowed transition-colors leading-none"
+              title="Mover para baixo"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
           <button onClick={e => { e.stopPropagation(); handleRemoveMeal() }}
             className="text-gray-300 hover:text-red-400 text-lg transition-colors">✕</button>
           <span className="text-gray-400 text-sm">{collapsed ? '▸' : '▾'}</span>
@@ -1035,16 +1082,32 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
             </div>
           )}
 
-          {meal.meal_foods.map(mf => (
+          {meal.meal_foods.map((mf, foodIdx) => (
             <MealFoodRow
               key={mf.id}
               mf={mf}
+              isFirst={foodIdx === 0}
+              isLast={foodIdx === meal.meal_foods.length - 1}
               onQtyChange={handleQtyChange}
               onRemove={handleRemoveFood}
               onSubAdded={handleSubAdded}
               onSubRemoved={handleSubRemoved}
               onSubUpdated={handleSubUpdated}
               onFullUpdate={handleFullUpdate}
+              onMoveUp={async () => {
+                if (foodIdx === 0) return
+                const newFoods = [...meal.meal_foods]
+                ;[newFoods[foodIdx - 1], newFoods[foodIdx]] = [newFoods[foodIdx], newFoods[foodIdx - 1]]
+                onUpdate({ ...meal, meal_foods: newFoods })
+                await reorderMealFood(meal.id, mf.id, 'up')
+              }}
+              onMoveDown={async () => {
+                if (foodIdx === meal.meal_foods.length - 1) return
+                const newFoods = [...meal.meal_foods]
+                ;[newFoods[foodIdx], newFoods[foodIdx + 1]] = [newFoods[foodIdx + 1], newFoods[foodIdx]]
+                onUpdate({ ...meal, meal_foods: newFoods })
+                await reorderMealFood(meal.id, mf.id, 'down')
+              }}
             />
           ))}
 
@@ -1311,13 +1374,29 @@ export default function DietEditor({ patient, plan, professionalId }: {
               })}
             </div>
 
-            {meals.map(meal => (
+            {meals.map((meal, idx) => (
               <MealCard
                 key={meal.id}
                 meal={meal}
                 planId={plan.id}
+                isFirst={idx === 0}
+                isLast={idx === meals.length - 1}
                 onUpdate={updated => setMeals(prev => prev.map(m => m.id === updated.id ? updated : m))}
                 onRemoveMeal={id => setMeals(prev => prev.filter(m => m.id !== id))}
+                onMoveUp={async () => {
+                  if (idx === 0) return
+                  const newMeals = [...meals]
+                  ;[newMeals[idx - 1], newMeals[idx]] = [newMeals[idx], newMeals[idx - 1]]
+                  setMeals(newMeals)
+                  await reorderMeal(plan.id, meal.id, 'up')
+                }}
+                onMoveDown={async () => {
+                  if (idx === meals.length - 1) return
+                  const newMeals = [...meals]
+                  ;[newMeals[idx], newMeals[idx + 1]] = [newMeals[idx + 1], newMeals[idx]]
+                  setMeals(newMeals)
+                  await reorderMeal(plan.id, meal.id, 'down')
+                }}
               />
             ))}
 

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/login/actions'
 import Link from 'next/link'
+import CheckInForm from './CheckInForm'
 
 export default async function AlunoPage({
   searchParams,
@@ -496,8 +497,11 @@ export default async function AlunoPage({
 
           return (
             <>
-              <div className="text-[10px] font-bold tracking-[2px] uppercase mt-4" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Evolução
+              <div className="flex items-center justify-between mt-4">
+                <div className="text-[10px] font-bold tracking-[2px] uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Evolução
+                </div>
+                <CheckInForm lastWeight={latest.weight_kg} />
               </div>
               <div className="rounded-xl overflow-hidden" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
                 {/* Header with sparkline */}
@@ -559,6 +563,17 @@ export default async function AlunoPage({
             </>
           )
         })()}
+
+        {/* First check-in CTA for patients with no history */}
+        {(!checkIns || checkIns.length === 0) && (
+          <div className="rounded-xl p-5 text-center mt-4" style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+            <div className="text-sm font-semibold text-white mb-1">Registre seu primeiro check-in</div>
+            <div className="text-xs mb-4" style={{ color: 'rgba(197,205,240,0.45)' }}>
+              Acompanhe sua evolução registrando peso e aderência ao plano.
+            </div>
+            <CheckInForm lastWeight={null} />
+          </div>
+        )}
 
         {/* Footer ornament */}
         <div className="flex items-center justify-center gap-3 pt-4 pb-2" style={{ opacity: 0.2 }}>

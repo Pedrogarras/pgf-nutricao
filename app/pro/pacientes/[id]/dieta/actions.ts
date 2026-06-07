@@ -158,6 +158,49 @@ export async function removeSubstitute(substituteId: string) {
   await supabase.from('meal_food_substitutes').delete().eq('id', substituteId)
 }
 
+export async function reorderMeal(planId: string, mealId: string, direction: 'up' | 'down') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Verify plan belongs to this professional
+  const { data: plan } = await supabase.from('diet_plans').select('id').eq('id', planId).eq('professional_id', user.id).single()
+  if (!plan) return
+
+  // Fetch all meals sorted
+  const { data: meals } = await supabase.from('meals').select('id, sort_order').eq('diet_plan_id', planId).order('sort_order')
+  if (!meals) return
+
+  const idx = meals.findIndex(m => m.id === mealId)
+  if (idx < 0) return
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= meals.length) return
+
+  const a = meals[idx], b = meals[swapIdx]
+  await supabase.from('meals').update({ sort_order: b.sort_order }).eq('id', a.id)
+  await supabase.from('meals').update({ sort_order: a.sort_order }).eq('id', b.id)
+}
+
+export async function reorderMealFood(mealId: string, mealFoodId: string, direction: 'up' | 'down') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  const ownerId = await getMealOwnerId(supabase, mealId)
+  if (ownerId !== user.id) return
+
+  const { data: foods } = await supabase.from('meal_foods').select('id, sort_order').eq('meal_id', mealId).order('sort_order')
+  if (!foods) return
+
+  const idx = foods.findIndex(f => f.id === mealFoodId)
+  if (idx < 0) return
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1
+  if (swapIdx < 0 || swapIdx >= foods.length) return
+
+  const a = foods[idx], b = foods[swapIdx]
+  await supabase.from('meal_foods').update({ sort_order: b.sort_order }).eq('id', a.id)
+  await supabase.from('meal_foods').update({ sort_order: a.sort_order }).eq('id', b.id)
+}
+
 export async function updateMeal(mealId: string, data: { name?: string; time_start?: string; emoji?: string; notes?: string }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
