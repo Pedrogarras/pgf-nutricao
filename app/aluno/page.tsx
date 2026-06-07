@@ -901,6 +901,10 @@ export default async function AlunoPage({
               href: '/aluno/perfil', icon: '👤', label: 'Minha Ficha',
               hint: null, dot: null,
             },
+            {
+              href: '/aluno/tabela', icon: '🔍', label: 'Tabela',
+              hint: 'Alimentos', dot: null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
