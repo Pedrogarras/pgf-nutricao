@@ -178,9 +178,21 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                   <td className="px-5 py-3.5">
                     <div className="flex gap-1.5 flex-wrap">
                       <Link href={`/pro/pacientes/${p.id}`} className="btn btn-primary btn-sm">Abrir</Link>
-                      <Link href={`/pro/pacientes/${p.id}/diario`} className="btn btn-outline btn-sm text-xs">📔</Link>
-                      <Link href={`/pro/pacientes/${p.id}/fotos`} className="btn btn-outline btn-sm text-xs">📸</Link>
-                      <Link href={`/pro/pacientes/${p.id}/metas`} className="btn btn-outline btn-sm text-xs">🎯</Link>
+                      <Link href={`/pro/pacientes/${p.id}/diario`} className="btn btn-outline btn-sm text-xs" title="Diário alimentar">📔</Link>
+                      <Link href={`/pro/pacientes/${p.id}/fotos`} className="btn btn-outline btn-sm text-xs" title="Fotos de progresso">📸</Link>
+                      <Link href={`/pro/pacientes/${p.id}/metas`} className="btn btn-outline btn-sm text-xs" title="Metas clínicas">🎯</Link>
+                      {p.phone && (
+                        <a
+                          href={`https://wa.me/55${p.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-outline btn-sm text-xs"
+                          title={`WhatsApp: ${p.phone}`}
+                          style={{ color: '#6EE7B7', borderColor: 'rgba(16,185,129,0.25)' }}
+                        >
+                          💬
+                        </a>
+                      )}
                     </div>
                   </td>
                 </tr>
