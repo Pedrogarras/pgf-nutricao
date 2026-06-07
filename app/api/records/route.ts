@@ -21,7 +21,7 @@ async function syncGoalsFromRecord(
 ) {
   const { data: goals } = await supabase
     .from('patient_goals')
-    .select('id, metric, direction')
+    .select('id, metric, direction, target_value')
     .eq('patient_id', patientId)
     .eq('achieved', false)
 
@@ -43,9 +43,18 @@ async function syncGoalsFromRecord(
     }
 
     if (newValue !== null) {
+      const target = goal.target_value
+      const achieved =
+        target != null && (
+          goal.direction === 'decrease' ? newValue <= target : newValue >= target
+        )
+
       await supabase
         .from('patient_goals')
-        .update({ current_value: newValue })
+        .update({
+          current_value: newValue,
+          ...(achieved ? { achieved: true, achieved_at: new Date().toISOString() } : {}),
+        })
         .eq('id', goal.id)
     }
   }
