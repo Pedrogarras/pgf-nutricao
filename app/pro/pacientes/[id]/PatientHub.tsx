@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess } from './actions'
+import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess, updatePatient } from './actions'
 
 type DietPlan = {
   id: string
@@ -18,8 +18,11 @@ type Patient = {
   goal: string | null
   weight_kg: number | null
   height_cm?: number | null
+  phone?: string | null
   email?: string | null
   auth_user_id?: string | null
+  activity_level?: string | null
+  notes?: string | null
 }
 
 interface Props {
@@ -34,6 +37,38 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  // Edit patient data
+  const [showEditPatient, setShowEditPatient] = useState(false)
+  const [patientData, setPatientData] = useState({
+    full_name: patient.full_name,
+    weight_kg: patient.weight_kg ? String(patient.weight_kg) : '',
+    height_cm: patient.height_cm ? String(patient.height_cm) : '',
+    goal: patient.goal ?? '',
+    activity_level: patient.activity_level ?? 'levemente_ativo',
+    phone: patient.phone ?? '',
+    notes: patient.notes ?? '',
+  })
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  const handleEditPatient = async () => {
+    if (!patientData.full_name.trim()) return
+    setEditLoading(true)
+    setEditError('')
+    const result = await updatePatient(patient.id, {
+      full_name: patientData.full_name.trim(),
+      weight_kg: patientData.weight_kg ? parseFloat(patientData.weight_kg) : null,
+      height_cm: patientData.height_cm ? parseFloat(patientData.height_cm) : null,
+      goal: patientData.goal.trim() || null,
+      activity_level: patientData.activity_level || null,
+      phone: patientData.phone.trim() || null,
+      notes: patientData.notes.trim() || null,
+    })
+    setEditLoading(false)
+    if (result?.error) { setEditError(result.error); return }
+    setShowEditPatient(false)
+  }
 
   // Patient account management
   const [hasAccess, setHasAccess] = useState(!!patient.auth_user_id)
@@ -130,7 +165,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
           Pacientes
         </Link>
         <span style={{ color: 'rgba(255,255,255,0.15)' }}>›</span>
-        <span className="text-xs font-semibold text-white">{patient.full_name}</span>
+        <span className="text-xs font-semibold text-white">{patientData.full_name}</span>
       </div>
 
       <div className="p-8 max-w-5xl">
@@ -148,38 +183,46 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
           </div>
           <div className="flex-1">
             <h1 className="text-2xl font-black text-white tracking-tight leading-none">
-              {patient.full_name}
+              {patientData.full_name}
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-2">
-              {patient.goal && (
+              {patientData.goal && (
                 <span className="text-sm" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                  {patient.goal}
+                  {patientData.goal}
                 </span>
               )}
-              {patient.weight_kg && (
+              {patientData.weight_kg && (
                 <span
                   className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD' }}
                 >
-                  {patient.weight_kg} kg
+                  {patientData.weight_kg} kg
                 </span>
               )}
-              {patient.height_cm && (
+              {patientData.height_cm && (
                 <span
                   className="text-xs px-2 py-0.5 rounded-full"
                   style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.45)' }}
                 >
-                  {patient.height_cm} cm
+                  {patientData.height_cm} cm
                 </span>
               )}
             </div>
           </div>
-          <Link
-            href={`/pro/pacientes/${patient.id}/treino`}
-            className="btn btn-outline btn-sm flex-shrink-0"
-          >
-            Prescrição de Treino
-          </Link>
+          <div className="flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => { setEditError(''); setShowEditPatient(true) }}
+              className="btn btn-ghost btn-sm"
+            >
+              Editar dados
+            </button>
+            <Link
+              href={`/pro/pacientes/${patient.id}/treino`}
+              className="btn btn-outline btn-sm"
+            >
+              Prescrição de Treino
+            </Link>
+          </div>
         </div>
 
         {/* Section header */}
@@ -565,6 +608,161 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                 style={{ opacity: accessLoading ? 0.6 : 1 }}
               >
                 {accessLoading ? 'Salvando...' : showAccessModal === 'create' ? 'Criar acesso' : 'Salvar senha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Patient Modal */}
+      {showEditPatient && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.78)' }}
+          onClick={e => e.target === e.currentTarget && setShowEditPatient(false)}
+        >
+          <div
+            className="relative rounded-2xl p-7 w-full max-w-md shadow-2xl"
+            style={{ background: 'var(--dark-card)', border: '1px solid rgba(37,99,235,0.35)' }}
+          >
+            <div className="absolute top-0 left-8 right-8 h-px rounded-full"
+              style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
+
+            <div className="font-black text-white text-lg tracking-tight mb-1">Editar Paciente</div>
+            <div className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              Dados de {patient.full_name}
+            </div>
+
+            <div className="space-y-4">
+              {/* Full name */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>Nome completo</label>
+                <input
+                  type="text"
+                  value={patientData.full_name}
+                  onChange={e => setPatientData(p => ({ ...p, full_name: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  autoFocus
+                />
+              </div>
+
+              {/* Weight + Height */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}>Peso (kg)</label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="30"
+                    max="300"
+                    value={patientData.weight_kg}
+                    onChange={e => setPatientData(p => ({ ...p, weight_kg: e.target.value }))}
+                    placeholder="ex: 72.5"
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}>Altura (cm)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="100"
+                    max="220"
+                    value={patientData.height_cm}
+                    onChange={e => setPatientData(p => ({ ...p, height_cm: e.target.value }))}
+                    placeholder="ex: 165"
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  />
+                </div>
+              </div>
+
+              {/* Goal */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>Objetivo</label>
+                <input
+                  type="text"
+                  value={patientData.goal}
+                  onChange={e => setPatientData(p => ({ ...p, goal: e.target.value }))}
+                  placeholder="ex: Emagrecimento, Ganho de massa..."
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                />
+              </div>
+
+              {/* Activity level */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>Nivel de Atividade</label>
+                <select
+                  value={patientData.activity_level}
+                  onChange={e => setPatientData(p => ({ ...p, activity_level: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                >
+                  <option value="sedentario">Sedentário</option>
+                  <option value="levemente_ativo">Levemente ativo (1–2x/sem)</option>
+                  <option value="moderadamente_ativo">Moderadamente ativo (3–5x/sem)</option>
+                  <option value="muito_ativo">Muito ativo (6–7x/sem)</option>
+                  <option value="extremamente_ativo">Extremamente ativo</option>
+                </select>
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>Telefone / WhatsApp</label>
+                <input
+                  type="tel"
+                  value={patientData.phone}
+                  onChange={e => setPatientData(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="(51) 99999-0000"
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                />
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>Observações internas</label>
+                <textarea
+                  value={patientData.notes}
+                  onChange={e => setPatientData(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Notas sobre o paciente..."
+                  rows={3}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none resize-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                />
+              </div>
+
+              {editError && (
+                <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.12)', color: '#FCA5A5' }}>
+                  {editError}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-6">
+              <button
+                onClick={() => setShowEditPatient(false)}
+                className="btn btn-ghost btn-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleEditPatient}
+                disabled={editLoading || !patientData.full_name.trim()}
+                className="btn btn-primary btn-sm"
+                style={{ opacity: editLoading || !patientData.full_name.trim() ? 0.5 : 1 }}
+              >
+                {editLoading ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>

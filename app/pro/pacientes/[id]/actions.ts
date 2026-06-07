@@ -3,6 +3,27 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
+export async function updatePatient(
+  patientId: string,
+  data: {
+    full_name?: string; weight_kg?: number | null; height_cm?: number | null
+    goal?: string | null; activity_level?: string | null
+    phone?: string | null; email?: string | null; notes?: string | null
+  }
+) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  const { error } = await supabase
+    .from('patients')
+    .update({ ...data, updated_at: new Date().toISOString() })
+    .eq('id', patientId)
+    .eq('professional_id', user.id)
+  if (error) return { error: error.message }
+  revalidatePath(`/pro/pacientes/${patientId}`)
+  return { ok: true }
+}
+
 export async function createDietPlan(patientId: string, title: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
