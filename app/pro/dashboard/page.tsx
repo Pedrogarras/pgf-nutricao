@@ -7,17 +7,37 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
   const [
     { count: totalPatients },
     { data: recentPatients },
     { count: activePlans },
     { count: patientsWithAccess },
+    { data: recentCheckIns },
   ] = await Promise.all([
     supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
     supabase.from('patients').select('id,full_name,goal,weight_kg,created_at').eq('professional_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(5),
     supabase.from('diet_plans').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
     supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true).not('auth_user_id', 'is', null),
+    supabase.from('anthropometric_records').select('id, patient_id, measured_at, weight_kg, adherence_pct, patients(full_name)').eq('professional_id', user.id).order('measured_at', { ascending: false }).limit(8),
   ])
+
+  // Find patients with no check-in in last 30 days
+  const { data: allPatients } = await supabase
+    .from('patients')
+    .select('id, full_name')
+    .eq('professional_id', user.id)
+    .eq('active', true)
+
+  const { data: recentlyCheckedIn } = await supabase
+    .from('anthropometric_records')
+    .select('patient_id')
+    .eq('professional_id', user.id)
+    .gte('measured_at', thirtyDaysAgo)
+
+  const recentIds = new Set((recentlyCheckedIn ?? []).map(r => r.patient_id))
+  const needsAttention = (allPatients ?? []).filter(p => !recentIds.has(p.id)).slice(0, 5)
 
   const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
@@ -86,8 +106,63 @@ export default async function DashboardPage() {
           </Link>
         </div>
 
+        <div className="grid grid-cols-2 gap-6">
+          {/* Patients needing attention */}
+          {needsAttention.length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                  <span className="card-title">Sem check-in há 30+ dias</span>
+                </div>
+                <span className="badge badge-red">{needsAttention.length}</span>
+              </div>
+              <div className="divide-y divide-gray-50">
+                {needsAttention.map(p => (
+                  <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                    <span className="text-sm font-medium text-gray-900">{p.full_name}</span>
+                    <Link href={`/pro/pacientes/${p.id}`} className="btn btn-outline btn-sm">Abrir</Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent check-ins */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Check-ins Recentes</span>
+            </div>
+            {recentCheckIns?.length ? (
+              <div className="divide-y divide-gray-50">
+                {recentCheckIns.map(ci => {
+                  const p = ci.patients as unknown as { full_name: string } | null
+                  return (
+                    <div key={ci.id} className="flex items-center justify-between px-5 py-2.5">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{p?.full_name ?? '—'}</div>
+                        <div className="text-xs text-gray-400">
+                          {new Date(ci.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                          {ci.weight_kg != null && ` · ${ci.weight_kg} kg`}
+                        </div>
+                      </div>
+                      {ci.adherence_pct != null && (
+                        <span className={`badge text-[10px] ${ci.adherence_pct >= 80 ? 'badge-green' : ci.adherence_pct >= 50 ? 'badge-blue' : 'badge-red'}`}>
+                          {ci.adherence_pct}% adesão
+                        </span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="px-5 py-8 text-center text-gray-400 text-sm">Nenhum check-in registrado.</div>
+            )}
+          </div>
+        </div>
+
         {/* Recent patients */}
-        <div className="card">
+        <div className="card mt-6">
           <div className="card-header">
             <span className="card-title">Pacientes Recentes</span>
             <Link href="/pro/pacientes" className="btn btn-outline btn-sm">Ver todos</Link>

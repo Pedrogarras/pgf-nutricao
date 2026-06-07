@@ -2035,6 +2035,45 @@ function EvolucaoTab({ patientId, professionalId }: { patientId: string; profess
 }
 
 // ===================== PDF PREVIEW — estilo Webdiet =====================
+function generateWhatsAppText(patient: Patient, plan: LocalPlan, meals: LocalMeal[], totals: ReturnType<typeof planTotal>): string {
+  const lines: string[] = []
+  lines.push(`*PLANO ALIMENTAR — ${patient.full_name.toUpperCase()}*`)
+  lines.push(`Pedro Garrastazu Frey · Nutricionista`)
+  lines.push('')
+  if (plan.kcal_goal) {
+    lines.push(`*META DIÁRIA:* ${plan.kcal_goal} kcal | P ${plan.protein_goal_g ?? r(totals.protein)}g | C ${plan.carbs_goal_g ?? r(totals.carbs)}g | G ${plan.fat_goal_g ?? r(totals.fat)}g`)
+    lines.push('')
+  }
+  for (const meal of meals) {
+    const mt = mealTotal(meal)
+    lines.push(`*${meal.emoji ?? ''} ${meal.name}${meal.time_start ? ` — ${meal.time_start}` : ''}*`)
+    lines.push(`_(${r(mt.kcal)} kcal · P ${r(mt.protein)}g · C ${r(mt.carbs)}g · G ${r(mt.fat)}g)_`)
+    for (const mf of meal.meal_foods) {
+      const desc = mf.quantity_description || `${mf.quantity_g}g`
+      lines.push(`• ${mf.food.name} — ${desc}`)
+      if (mf.notes) lines.push(`  _${mf.notes}_`)
+      if (mf.substitutes?.length) {
+        for (const sub of mf.substitutes) {
+          lines.push(`  ↔ OU: ${sub.food.name} — ${sub.quantity_description || `${sub.quantity_g}g`}`)
+          if (sub.notes) lines.push(`     _${sub.notes}_`)
+        }
+      }
+    }
+    if (meal.notes) {
+      lines.push('')
+      lines.push(`📌 ${meal.notes}`)
+    }
+    lines.push('')
+  }
+  if (plan.notes) {
+    lines.push(`*ORIENTAÇÕES GERAIS:*`)
+    lines.push(plan.notes)
+    lines.push('')
+  }
+  lines.push(`_Tabela nutricional: TACO/IBGE. Valores estimados._`)
+  return lines.join('\n')
+}
+
 function PdfPreview({ patient, plan, meals, totals }: {
   patient: Patient; plan: LocalPlan; meals: LocalMeal[]; totals: ReturnType<typeof planTotal>
 }) {
@@ -2042,6 +2081,15 @@ function PdfPreview({ patient, plan, meals, totals }: {
   const age = patient.date_of_birth
     ? Math.floor((Date.now() - new Date(patient.date_of_birth + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null
+  const [copied, setCopied] = useState(false)
+
+  function handleCopyText() {
+    const text = generateWhatsAppText(patient, plan, meals, totals)
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2500)
+    })
+  }
 
   return (
     <div>
@@ -2049,15 +2097,26 @@ function PdfPreview({ patient, plan, meals, totals }: {
         <div className="text-sm text-gray-500">
           Pré-visualização — clique em <strong>Imprimir</strong> para gerar o PDF.
         </div>
-        <button
-          onClick={() => window.print()}
-          className="btn btn-primary flex items-center gap-2"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
-          </svg>
-          Imprimir / Salvar PDF
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={handleCopyText}
+            className={`btn ${copied ? 'btn-outline' : 'btn-ghost'} flex items-center gap-2`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+            </svg>
+            {copied ? 'Copiado!' : 'Copiar texto (WhatsApp)'}
+          </button>
+          <button
+            onClick={() => window.print()}
+            className="btn btn-primary flex items-center gap-2"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+            </svg>
+            Imprimir / Salvar PDF
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-lg max-w-3xl mx-auto" id="pdf-content">
