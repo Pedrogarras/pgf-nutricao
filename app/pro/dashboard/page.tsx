@@ -68,7 +68,7 @@ export default async function DashboardPage() {
           <h1 className="text-base font-bold text-white">Dashboard</h1>
           <p className="text-xs capitalize" style={{ color: 'rgba(255,255,255,0.35)' }}>{today}</p>
         </div>
-        <Link href="/pro/pacientes/novo" className="btn btn-primary btn-sm">+ Novo Paciente</Link>
+        <Link href="/pro/pacientes" className="btn btn-primary btn-sm">+ Novo Paciente</Link>
       </div>
 
       <div className="p-8">

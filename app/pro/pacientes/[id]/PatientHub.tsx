@@ -371,6 +371,15 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             >
               📄 Relatório
             </a>
+            <a
+              href={`/pro/pacientes/${patient.id}/dieta/imprimir`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-sm"
+              title="Imprimir plano alimentar"
+            >
+              🖨️ Imprimir
+            </a>
             <Link
               href={`/pro/pacientes/${patient.id}/anamnese`}
               className="btn btn-outline btn-sm"
