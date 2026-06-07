@@ -818,6 +818,10 @@ export default async function AlunoPage({
               hint: nextConsultation ? 'Próxima ↑' : null,
               dot: nextConsultation ? 'blue' : null,
             },
+            {
+              href: '/aluno/perfil', icon: '👤', label: 'Minha Ficha',
+              hint: null, dot: null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
