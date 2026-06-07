@@ -20,19 +20,26 @@ interface LocalPlan { id: string; title?: string | null; kcal_goal: number | nul
 // ===================== HELPERS =====================
 function calcMacros(qty: number, food: LocalFood) {
   const ratio = qty / (food.portion_g || 100)
-  return { kcal: food.kcal * ratio, protein: food.protein_g * ratio, carbs: food.carbs_g * ratio, fat: food.fat_g * ratio }
+  return {
+    kcal: food.kcal * ratio,
+    protein: food.protein_g * ratio,
+    carbs: food.carbs_g * ratio,
+    fat: food.fat_g * ratio,
+    fiber: (food.fiber_g ?? 0) * ratio,
+    sodium: (food.sodium_mg ?? 0) * ratio,
+  }
 }
 function mealTotal(meal: LocalMeal) {
   return meal.meal_foods.reduce((acc, mf) => {
     const m = calcMacros(mf.quantity_g, mf.food)
-    return { kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat }
-  }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+    return { kcal: acc.kcal + m.kcal, protein: acc.protein + m.protein, carbs: acc.carbs + m.carbs, fat: acc.fat + m.fat, fiber: acc.fiber + m.fiber, sodium: acc.sodium + m.sodium }
+  }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
 }
 function planTotal(meals: LocalMeal[]) {
   return meals.reduce((acc, meal) => {
     const t = mealTotal(meal)
-    return { kcal: acc.kcal + t.kcal, protein: acc.protein + t.protein, carbs: acc.carbs + t.carbs, fat: acc.fat + t.fat }
-  }, { kcal: 0, protein: 0, carbs: 0, fat: 0 })
+    return { kcal: acc.kcal + t.kcal, protein: acc.protein + t.protein, carbs: acc.carbs + t.carbs, fat: acc.fat + t.fat, fiber: acc.fiber + t.fiber, sodium: acc.sodium + t.sodium }
+  }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
 }
 function r(n: number) { return Math.round(n * 10) / 10 }
 
@@ -104,6 +111,7 @@ function FoodSearch({ onSelect, placeholder }: { onSelect: (food: LocalFood) => 
               </div>
               <div className="text-xs text-gray-400">
                 {r(food.kcal)} kcal · P {r(food.protein_g)}g · C {r(food.carbs_g)}g · G {r(food.fat_g)}g
+                {(food.fiber_g ?? 0) > 0 && <span className="text-emerald-500 ml-1">· Fib {r(food.fiber_g)}g</span>}
                 <span className="ml-2 text-gray-300">(base {food.portion_g}g)</span>
               </div>
             </button>
@@ -156,11 +164,12 @@ function AddFoodModal({ meal, onClose, onAdded }: { meal: LocalMeal; onClose: ()
   const [selectedFood, setSelectedFood] = useState<LocalFood | null>(null)
   const [quantity, setQuantity] = useState('100')
   const [description, setDescription] = useState('')
+  const [foodNotes, setFoodNotes] = useState('')
   const [loading, setLoading] = useState(false)
 
   const macros = selectedFood ? (() => {
     const m = calcMacros(Number(quantity || 0), selectedFood)
-    return { kcal: r(m.kcal), protein: r(m.protein), carbs: r(m.carbs), fat: r(m.fat) }
+    return { kcal: r(m.kcal), protein: r(m.protein), carbs: r(m.carbs), fat: r(m.fat), fiber: r(m.fiber), sodium: r(m.sodium) }
   })() : null
 
   function handleFoodSelect(food: LocalFood) {
@@ -177,7 +186,7 @@ function AddFoodModal({ meal, onClose, onAdded }: { meal: LocalMeal; onClose: ()
   async function handleAdd() {
     if (!selectedFood || !quantity) return
     setLoading(true)
-    const result = await addFoodToMeal(meal.id, selectedFood.id, Number(quantity), description || `${quantity}g`)
+    const result = await addFoodToMeal(meal.id, selectedFood.id, Number(quantity), description || `${quantity}g`, foodNotes.trim() || null)
     if (result?.data) onAdded({ ...result.data, food: selectedFood, substitutes: [] } as LocalMealFood)
     setLoading(false)
     onClose()
@@ -226,18 +235,36 @@ function AddFoodModal({ meal, onClose, onAdded }: { meal: LocalMeal; onClose: ()
               </div>
 
               {macros && (
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  {[
-                    { label: 'Kcal', value: macros.kcal, color: 'text-gray-900' },
-                    { label: 'Prot', value: `${macros.protein}g`, color: 'text-blue-600' },
-                    { label: 'Carb', value: `${macros.carbs}g`, color: 'text-amber-600' },
-                    { label: 'Gord', value: `${macros.fat}g`, color: 'text-red-600' },
-                  ].map(m => (
-                    <div key={m.label} className="bg-gray-50 rounded-lg p-2">
-                      <div className={`text-base font-black ${m.color}`}>{m.value}</div>
-                      <div className="text-[10px] text-gray-400">{m.label}</div>
-                    </div>
-                  ))}
+                <>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    {[
+                      { label: 'Kcal', value: macros.kcal, color: 'text-gray-900' },
+                      { label: 'Prot', value: `${macros.protein}g`, color: 'text-blue-600' },
+                      { label: 'Carb', value: `${macros.carbs}g`, color: 'text-amber-600' },
+                      { label: 'Gord', value: `${macros.fat}g`, color: 'text-red-600' },
+                    ].map(m => (
+                      <div key={m.label} className="bg-gray-50 rounded-lg p-2">
+                        <div className={`text-base font-black ${m.color}`}>{m.value}</div>
+                        <div className="text-[10px] text-gray-400">{m.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-4 text-xs text-gray-400">
+                    <span>Fibra: <strong className="text-emerald-600">{macros.fiber}g</strong></span>
+                    <span>Sódio: <strong className="text-gray-600">{macros.sodium}mg</strong></span>
+                  </div>
+                </>
+              )}
+
+              {selectedFood && (
+                <div>
+                  <label className="form-label">Obs. de preparo (opcional)</label>
+                  <input
+                    value={foodNotes}
+                    onChange={e => setFoodNotes(e.target.value)}
+                    className="form-input text-sm"
+                    placeholder="ex: Cozido, sem sal; escorrer bem..."
+                  />
                 </div>
               )}
             </>
@@ -653,7 +680,7 @@ function EditFoodModal({ mf, onClose, onSaved }: {
 }
 
 // ===================== MEAL FOOD ROW =====================
-function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSubUpdated, onFullUpdate, onMoveUp, onMoveDown, isFirst, isLast: isLastFood }: {
+function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSubUpdated, onFullUpdate, onMoveUp, onMoveDown, isFirst, isLast: isLastFood, allMeals, currentMealId, onCopied }: {
   mf: LocalMealFood
   onQtyChange: (id: string, qty: number) => void
   onRemove: (id: string) => void
@@ -665,11 +692,27 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
   onMoveDown: () => void
   isFirst: boolean
   isLast: boolean
+  allMeals: LocalMeal[]
+  currentMealId: string
+  onCopied: (targetMealId: string, newMf: LocalMealFood) => void
 }) {
   const [addSubOpen, setAddSubOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingSub, setEditingSub] = useState<LocalSubstitute | null>(null)
   const [showSubs, setShowSubs] = useState(true)
+  const [copyMenuOpen, setCopyMenuOpen] = useState(false)
+  const [copying, setCopying] = useState(false)
+
+  async function handleCopyToMeal(targetMealId: string) {
+    setCopying(true)
+    setCopyMenuOpen(false)
+    const result = await addFoodToMeal(targetMealId, mf.food_id, mf.quantity_g, mf.quantity_description ?? undefined, mf.notes ?? undefined)
+    setCopying(false)
+    if (result?.data) {
+      const newMf: LocalMealFood = { ...result.data, food: mf.food, substitutes: [] }
+      onCopied(targetMealId, newMf)
+    }
+  }
 
   const m = calcMacros(mf.quantity_g, mf.food)
   const mainKcal = m.kcal
@@ -700,7 +743,10 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
                 {showSubs ? '▾' : '▸'}
               </button>
             )}
-            <span className="text-sm font-semibold text-gray-800">{mf.food.name}</span>
+            <span
+              className="text-sm font-semibold text-gray-800"
+              title={`Fibra: ${r(m.fiber)}g · Sódio: ${r(m.sodium)}mg`}
+            >{mf.food.name}</span>
             {sourceBadge(mf.food.source, mf.food.source_label)}
             {/* Substitute count badge */}
             {hasSubs && (
@@ -722,11 +768,26 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
           )}
         </div>
 
-        <input
-          type="number" step="0.5" value={mf.quantity_g}
-          onChange={e => onQtyChange(mf.id, Number(e.target.value))}
-          className="form-input text-xs text-center py-1 px-2"
-        />
+        <div className="flex flex-col gap-0.5">
+          <input
+            type="number" step="0.5" value={mf.quantity_g}
+            onChange={e => onQtyChange(mf.id, Number(e.target.value))}
+            className="form-input text-xs text-center py-1 px-2"
+          />
+          <div className="flex gap-0.5 justify-center">
+            {([-10, -5, 5, 10] as const).map(d => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => onQtyChange(mf.id, Math.max(1, mf.quantity_g + d))}
+                className="text-[8px] font-bold px-1 py-0.5 rounded leading-none bg-gray-100 hover:bg-pgf-100 text-gray-400 hover:text-pgf-700 transition-colors"
+                title={`${d > 0 ? '+' : ''}${d}g`}
+              >
+                {d > 0 ? `+${d}` : d}
+              </button>
+            ))}
+          </div>
+        </div>
         <span className="text-center text-sm font-semibold text-blue-600">{r(m.protein)}g</span>
         <span className="text-center text-sm font-semibold text-amber-600">{r(m.carbs)}g</span>
         <span className="text-center text-sm font-semibold text-red-500">{r(m.fat)}g</span>
@@ -771,6 +832,55 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
             >
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
+          </div>
+          {/* Copy to meal */}
+          <div className="relative">
+            <button
+              onClick={() => setCopyMenuOpen(v => !v)}
+              disabled={copying}
+              title="Copiar para outra refeição"
+              className="text-gray-200 hover:text-pgf-400 transition-colors disabled:opacity-40"
+            >
+              {copying ? (
+                <span className="text-[9px]">...</span>
+              ) : (
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/>
+                  <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+                </svg>
+              )}
+            </button>
+            {copyMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setCopyMenuOpen(false)} />
+                <div
+                  className="absolute right-0 top-5 z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[160px]"
+                  onClick={e => e.stopPropagation()}
+                >
+                <div className="px-3 py-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Copiar para:</div>
+                {allMeals.filter(m => m.id !== currentMealId).map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleCopyToMeal(m.id)}
+                    className="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-pgf-50 hover:text-pgf-700 flex items-center gap-2 transition-colors"
+                  >
+                    {m.emoji && <span>{m.emoji}</span>}
+                    <span className="truncate">{m.name}</span>
+                    {m.time_start && <span className="text-gray-300 ml-auto flex-shrink-0">{m.time_start}</span>}
+                  </button>
+                ))}
+                {allMeals.filter(m => m.id !== currentMealId).length === 0 && (
+                  <div className="px-3 py-2 text-xs text-gray-400">Nenhuma outra refeição</div>
+                )}
+                <button
+                  onClick={() => setCopyMenuOpen(false)}
+                  className="w-full text-left px-3 py-1.5 text-[10px] text-gray-400 hover:text-gray-600 transition-colors border-t border-gray-50 mt-1"
+                >
+                  Cancelar
+                </button>
+              </div>
+              </>
+            )}
           </div>
           <button
             onClick={() => onRemove(mf.id)}
@@ -910,7 +1020,7 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
 }
 
 // ===================== MEAL CARD =====================
-function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, onDuplicated, isFirst, isLast }: {
+function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, onDuplicated, isFirst, isLast, allMeals, onFoodCopied }: {
   meal: LocalMeal; planId: string
   onUpdate: (updated: LocalMeal) => void
   onRemoveMeal: (mealId: string) => void
@@ -919,11 +1029,18 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
   onDuplicated: (newMeal: LocalMeal) => void
   isFirst: boolean
   isLast: boolean
+  allMeals: LocalMeal[]
+  onFoodCopied: (targetMealId: string, newMf: LocalMealFood) => void
 }) {
   const [addOpen, setAddOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
   const [mealNotes, setMealNotes] = useState(meal.notes ?? '')
   const [notesDirty, setNotesDirty] = useState(false)
+  const [editMealOpen, setEditMealOpen] = useState(false)
+  const [editMealName, setEditMealName] = useState(meal.name)
+  const [editMealTime, setEditMealTime] = useState(meal.time_start ?? '')
+  const [editMealEmoji, setEditMealEmoji] = useState(meal.emoji ?? '')
+  const [editMealSaving, setEditMealSaving] = useState(false)
   const total = mealTotal(meal)
 
   function handleFoodAdded(mf: LocalMealFood) {
@@ -1056,10 +1173,22 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
     setNotesDirty(false)
   }
 
+  async function handleMealEditSave() {
+    const name = editMealName.trim()
+    if (!name) return
+    setEditMealSaving(true)
+    const time_start = editMealTime.trim() || null
+    const emoji = editMealEmoji.trim() || null
+    await updateMeal(meal.id, { name, time_start, emoji })
+    onUpdate({ ...meal, name, time_start, emoji })
+    setEditMealSaving(false)
+    setEditMealOpen(false)
+  }
+
   return (
     <div className="card mb-4 overflow-hidden">
       <div
-        className="flex items-center justify-between px-5 py-3.5 bg-pgf-50 border-b border-pgf-100 cursor-pointer"
+        className="group flex items-center justify-between px-5 py-3.5 bg-pgf-50 border-b border-pgf-100 cursor-pointer"
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-3">
@@ -1068,7 +1197,19 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
             : <span className="w-7 h-7 rounded-lg bg-pgf-100 flex items-center justify-center text-[10px] font-black text-pgf-600">R</span>
           }
           <div>
-            <div className="font-bold text-pgf-700">{meal.name}</div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-pgf-700">{meal.name}</span>
+              <button
+                onClick={e => { e.stopPropagation(); setEditMealName(meal.name); setEditMealTime(meal.time_start ?? ''); setEditMealEmoji(meal.emoji ?? ''); setEditMealOpen(true) }}
+                className="text-gray-300 hover:text-pgf-500 transition-colors opacity-0 group-hover:opacity-100"
+                title="Editar nome/horário"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>
+            </div>
             {meal.time_start && <div className="text-xs text-gray-400">{meal.time_start}</div>}
           </div>
         </div>
@@ -1139,6 +1280,9 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
               mf={mf}
               isFirst={foodIdx === 0}
               isLast={foodIdx === meal.meal_foods.length - 1}
+              allMeals={allMeals}
+              currentMealId={meal.id}
+              onCopied={onFoodCopied}
               onQtyChange={handleQtyChange}
               onRemove={handleRemoveFood}
               onSubAdded={handleSubAdded}
@@ -1194,6 +1338,79 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
 
       {addOpen && (
         <AddFoodModal meal={meal} onClose={() => setAddOpen(false)} onAdded={handleFoodAdded} />
+      )}
+
+      {editMealOpen && (
+        <div className="modal-backdrop" onClick={() => setEditMealOpen(false)}>
+          <div className="modal-box w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Editar refeição</h2>
+              <button className="modal-close" onClick={() => setEditMealOpen(false)}>✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Emoji picker strip */}
+              <div>
+                <label className="form-label">Emoji</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="w-10 h-10 rounded-xl bg-pgf-50 border border-pgf-100 flex items-center justify-center text-xl select-none">
+                    {editMealEmoji || '🍽️'}
+                  </div>
+                  <div className="flex gap-1 flex-wrap">
+                    {['🍳','🥗','🥛','🍗','🥩','🐟','🍚','🥑','🍌','🥜','☕','🌯','🥙','🍎','🏋️','💊','🌙','⚡'].map(em => (
+                      <button
+                        key={em}
+                        type="button"
+                        onClick={() => setEditMealEmoji(em)}
+                        className={`w-8 h-8 rounded-lg text-base flex items-center justify-center hover:bg-pgf-100 transition-colors ${editMealEmoji === em ? 'bg-pgf-100 ring-2 ring-pgf-400' : ''}`}
+                      >{em}</button>
+                    ))}
+                  </div>
+                </div>
+                <input
+                  value={editMealEmoji}
+                  onChange={e => setEditMealEmoji(e.target.value)}
+                  className="form-input mt-2 text-sm"
+                  placeholder="Ou digitar emoji manualmente..."
+                  maxLength={4}
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Nome da refeição <span className="text-red-400">*</span></label>
+                <input
+                  value={editMealName}
+                  onChange={e => setEditMealName(e.target.value)}
+                  className="form-input"
+                  placeholder="Ex: Café da manhã"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Horário</label>
+                <input
+                  type="time"
+                  value={editMealTime}
+                  onChange={e => setEditMealTime(e.target.value)}
+                  className="form-input"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={handleMealEditSave}
+                  disabled={!editMealName.trim() || editMealSaving}
+                  className="btn btn-primary flex-1"
+                >
+                  {editMealSaving ? 'Salvando...' : 'Salvar'}
+                </button>
+                <button onClick={() => setEditMealOpen(false)} className="btn btn-outline">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
@@ -1402,7 +1619,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
               )
             })()}
 
-            <div className="grid grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-4 gap-3 mb-3">
               {[
                 { label: 'Calorias', value: r(totals.kcal), goal: goals.kcal, unit: 'kcal', color: 'text-gray-900', bar: '#2B3A8E' },
                 { label: 'Proteína', value: r(totals.protein), goal: goals.protein, unit: 'g', color: 'text-blue-600', bar: '#2563EB' },
@@ -1423,6 +1640,43 @@ export default function DietEditor({ patient, plan, professionalId }: {
                   </div>
                 )
               })}
+            </div>
+            {/* Secondary: fiber + sodium + macro distribution */}
+            <div className="flex items-center gap-4 mb-6 px-4 py-2.5 rounded-xl text-sm"
+              style={{ background: 'rgba(37,99,235,0.04)', border: '1px solid rgba(37,99,235,0.08)' }}>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Fibra</span>
+                <span className="font-bold text-emerald-600">{r(totals.fiber)}g</span>
+                <span className="text-[10px] text-gray-300">{totals.kcal > 0 ? `(${r(totals.fiber * 1000 / totals.kcal * 1)}g/1000kcal)` : ''}</span>
+              </div>
+              <span className="text-gray-200">·</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Sódio</span>
+                <span className={`font-bold ${totals.sodium > 2000 ? 'text-red-500' : totals.sodium > 1500 ? 'text-amber-500' : 'text-gray-600'}`}>
+                  {r(totals.sodium)}mg
+                </span>
+                {totals.sodium > 2000 && <span className="text-[10px] text-red-400 font-medium">⚠ acima do recomendado (2000mg)</span>}
+              </div>
+              <span className="text-gray-200">·</span>
+              {/* Macro % distribution */}
+              {totals.kcal > 0 && (() => {
+                const pPct = Math.round((totals.protein * 4 / totals.kcal) * 100)
+                const cPct = Math.round((totals.carbs * 4 / totals.kcal) * 100)
+                const fPct = Math.round((totals.fat * 9 / totals.kcal) * 100)
+                return (
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-[10px] text-gray-400">Distribuição:</span>
+                    <span className="text-[11px] font-bold text-blue-500">{pPct}% P</span>
+                    <span className="text-[11px] font-bold text-amber-500">{cPct}% C</span>
+                    <span className="text-[11px] font-bold text-red-400">{fPct}% G</span>
+                    <div className="flex h-2 rounded-full overflow-hidden w-20 ml-1">
+                      <div style={{ width: `${pPct}%`, background: '#3B82F6' }} />
+                      <div style={{ width: `${cPct}%`, background: '#F59E0B' }} />
+                      <div style={{ width: `${fPct}%`, background: '#EF4444' }} />
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {meals.map((meal, idx) => (
@@ -1449,6 +1703,13 @@ export default function DietEditor({ patient, plan, professionalId }: {
                   await reorderMeal(plan.id, meal.id, 'down')
                 }}
                 onDuplicated={newMeal => setMeals(prev => [...prev, newMeal])}
+                allMeals={meals}
+                onFoodCopied={(targetMealId, newMf) => {
+                  setMeals(prev => prev.map(m => m.id === targetMealId
+                    ? { ...m, meal_foods: [...m.meal_foods, newMf] }
+                    : m
+                  ))
+                }}
               />
             ))}
 
@@ -2156,7 +2417,7 @@ function PdfPreview({ patient, plan, meals, totals }: {
 
           {/* Metas diárias */}
           <div className="text-[10px] font-bold text-pgf-600 uppercase tracking-widest border-b-2 border-pgf-600 pb-1 mb-3">Metas Diárias</div>
-          <div className="grid grid-cols-4 gap-2 mb-5">
+          <div className="grid grid-cols-4 gap-2 mb-3">
             {[
               { l: 'Calorias', v: plan.kcal_goal ? `${plan.kcal_goal} kcal` : `${r(totals.kcal)} kcal`, c: 'text-gray-900' },
               { l: 'Proteína', v: plan.protein_goal_g ? `${plan.protein_goal_g}g` : `${r(totals.protein)}g`, c: 'text-blue-600' },
@@ -2168,6 +2429,22 @@ function PdfPreview({ patient, plan, meals, totals }: {
                 <div className={`text-lg font-black ${m.c}`}>{m.v}</div>
               </div>
             ))}
+          </div>
+          <div className="flex items-center gap-4 mb-5 px-3 py-2 rounded-lg text-[10px]"
+            style={{ background: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+            <div><span className="text-gray-500">Fibra total: </span><span className="font-bold text-emerald-700">{r(totals.fiber)}g</span></div>
+            <span className="text-gray-300">·</span>
+            <div><span className="text-gray-500">Sódio: </span><span className={`font-bold ${totals.sodium > 2000 ? 'text-red-600' : 'text-gray-700'}`}>{r(totals.sodium)}mg</span></div>
+            {totals.kcal > 0 && (
+              <>
+                <span className="text-gray-300">·</span>
+                <div><span className="text-gray-500">Distribuição: </span>
+                  <span className="font-bold text-blue-600">{Math.round((totals.protein * 4 / totals.kcal) * 100)}% P</span>{' '}
+                  <span className="font-bold text-amber-600">{Math.round((totals.carbs * 4 / totals.kcal) * 100)}% C</span>{' '}
+                  <span className="font-bold text-red-500">{Math.round((totals.fat * 9 / totals.kcal) * 100)}% G</span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Plano alimentar */}

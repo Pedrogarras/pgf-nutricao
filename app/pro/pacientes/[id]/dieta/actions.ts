@@ -71,7 +71,7 @@ export async function removeMeal(mealId: string) {
   await supabase.from('meals').delete().eq('id', mealId)
 }
 
-export async function addFoodToMeal(mealId: string, foodId: string, quantityG: number, description: string) {
+export async function addFoodToMeal(mealId: string, foodId: string, quantityG: number, description?: string, notes?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
@@ -85,7 +85,8 @@ export async function addFoodToMeal(mealId: string, foodId: string, quantityG: n
     meal_id: mealId,
     food_id: foodId,
     quantity_g: quantityG,
-    quantity_description: description,
+    quantity_description: description ?? null,
+    notes: notes ?? null,
     sort_order,
   }).select().single()
 
@@ -285,7 +286,7 @@ export async function reorderMealFood(mealId: string, mealFoodId: string, direct
   await supabase.from('meal_foods').update({ sort_order: a.sort_order }).eq('id', b.id)
 }
 
-export async function updateMeal(mealId: string, data: { name?: string; time_start?: string; emoji?: string; notes?: string }) {
+export async function updateMeal(mealId: string, data: { name?: string; time_start?: string | null; emoji?: string | null; notes?: string }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
