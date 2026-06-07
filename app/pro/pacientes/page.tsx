@@ -17,10 +17,13 @@ export default async function PacientesPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between">
+      <div
+        className="sticky top-0 z-40 flex items-center justify-between px-8 h-14"
+        style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}
+      >
         <div>
-          <h1 className="text-lg font-bold">Pacientes</h1>
-          <p className="text-xs text-gray-400">{patients?.length ?? 0} pacientes ativos</p>
+          <h1 className="text-base font-bold text-white">Pacientes</h1>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{patients?.length ?? 0} pacientes ativos</p>
         </div>
         <NewPatientModal professionalId={user.id} />
       </div>
@@ -66,17 +69,16 @@ export default async function PacientesPage() {
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-2">
-                      <Link href={`/pro/pacientes/${p.id}/dieta`} className="btn btn-primary btn-sm">🥗 Dieta</Link>
-                      <Link href={`/pro/pacientes/${p.id}/treino`} className="btn btn-outline btn-sm">💪 Treino</Link>
+                      <Link href={`/pro/pacientes/${p.id}`} className="btn btn-primary btn-sm">Abrir</Link>
+                      <Link href={`/pro/pacientes/${p.id}/treino`} className="btn btn-outline btn-sm">Treino</Link>
                     </div>
                   </td>
                 </tr>
               ))}
               {!patients?.length && (
                 <tr><td colSpan={5} className="px-5 py-16 text-center text-gray-400">
-                  <div className="text-4xl mb-3">👥</div>
                   <div className="font-semibold text-gray-600 mb-1">Nenhum paciente cadastrado</div>
-                  <div className="text-sm">Clique em "Novo Paciente" para começar.</div>
+                  <div className="text-sm">Clique em &quot;Novo Paciente&quot; para começar.</div>
                 </td></tr>
               )}
             </tbody>

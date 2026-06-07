@@ -327,9 +327,8 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                       onClick={() => { setRenamingId(plan.id); setRenameVal(plan.title || '') }}
                       className="btn btn-ghost btn-sm"
                       title="Renomear plano"
-                      style={{ fontSize: 13 }}
                     >
-                      ✏️
+                      Renomear
                     </button>
                     <button
                       onClick={() => handleDelete(plan.id, plan.title || 'Plano')}
@@ -338,7 +337,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
                       style={{ color: '#fca5a5' }}
                       title="Excluir plano"
                     >
-                      🗑
+                      Excluir
                     </button>
                   </div>
                 </div>

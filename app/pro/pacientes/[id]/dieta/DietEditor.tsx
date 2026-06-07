@@ -618,74 +618,195 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
   const [addSubOpen, setAddSubOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
   const [editingSub, setEditingSub] = useState<LocalSubstitute | null>(null)
+  const [showSubs, setShowSubs] = useState(true)
+
   const m = calcMacros(mf.quantity_g, mf.food)
+  const mainKcal = m.kcal
+  const subs = mf.substitutes ?? []
+  const hasSubs = subs.length > 0
+
+  const COL = '1fr 90px 60px 60px 60px 55px 105px'
 
   return (
     <>
-      {/* Main food row */}
-      <div className="grid items-center py-2.5 border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
-        style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
-        <div>
-          <div className="flex items-center gap-1">
+      {/* ── Main food row ── */}
+      <div
+        className="grid items-center py-2.5 hover:bg-gray-50/40 transition-colors"
+        style={{
+          gridTemplateColumns: COL,
+          borderBottom: hasSubs && showSubs ? 'none' : '1px solid #f3f4f6',
+        }}
+      >
+        <div className="pr-2">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Collapse toggle when substitutes exist */}
+            {hasSubs && (
+              <button
+                onClick={() => setShowSubs(v => !v)}
+                title={showSubs ? 'Ocultar opções' : 'Mostrar opções'}
+                className="text-amber-400 hover:text-amber-600 font-bold text-xs leading-none transition-colors flex-shrink-0 w-3"
+              >
+                {showSubs ? '▾' : '▸'}
+              </button>
+            )}
             <span className="text-sm font-semibold text-gray-800">{mf.food.name}</span>
             {sourceBadge(mf.food.source, mf.food.source_label)}
+            {/* Substitute count badge */}
+            {hasSubs && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer select-none"
+                style={{ background: 'rgba(245,158,11,0.12)', color: '#D97706', border: '1px solid rgba(245,158,11,0.25)' }}
+                onClick={() => setShowSubs(v => !v)}
+                title="Opções de substituição"
+              >
+                {subs.length} OU
+              </span>
+            )}
           </div>
           {mf.quantity_description && (
-            <div className="text-[11px] text-gray-400">{mf.quantity_description}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5 pl-4">{mf.quantity_description}</div>
           )}
         </div>
-        <input type="number" step="0.5" value={mf.quantity_g}
+
+        <input
+          type="number" step="0.5" value={mf.quantity_g}
           onChange={e => onQtyChange(mf.id, Number(e.target.value))}
-          className="form-input text-xs text-center py-1 px-2" />
+          className="form-input text-xs text-center py-1 px-2"
+        />
         <span className="text-center text-sm font-semibold text-blue-600">{r(m.protein)}g</span>
         <span className="text-center text-sm font-semibold text-amber-600">{r(m.carbs)}g</span>
         <span className="text-center text-sm font-semibold text-red-500">{r(m.fat)}g</span>
         <span className="text-center text-sm font-bold text-gray-700">{r(m.kcal)}</span>
+
         <div className="flex items-center justify-center gap-1">
           <button
             onClick={() => setEditOpen(true)}
             title="Editar quantidade/medida"
-            className="text-gray-300 hover:text-pgf-500 transition-colors text-sm px-1"
-          >✏️</button>
-          <button onClick={() => setAddSubOpen(true)}
-            title="Adicionar substituto"
-            className="text-pgf-400 hover:text-pgf-600 text-xs px-1.5 py-0.5 rounded border border-pgf-200 hover:bg-pgf-50 transition-colors">
-            OU+
+            className="text-gray-300 hover:text-pgf-500 transition-colors w-6 flex items-center justify-center"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
           </button>
-          <button onClick={() => onRemove(mf.id)} className="text-gray-200 hover:text-red-400 text-base transition-colors">✕</button>
+          <button
+            onClick={() => setAddSubOpen(true)}
+            title="Adicionar substituto"
+            className="text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors"
+            style={{ color: '#D97706', borderColor: 'rgba(245,158,11,0.4)', background: 'rgba(245,158,11,0.06)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,158,11,0.15)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,158,11,0.06)' }}
+          >
+            + OU
+          </button>
+          <button
+            onClick={() => onRemove(mf.id)}
+            className="text-gray-200 hover:text-red-400 text-base transition-colors w-5 text-center"
+          >✕</button>
         </div>
       </div>
 
-      {/* Substitute rows */}
-      {mf.substitutes?.map(sub => {
-        const sm = calcMacros(sub.quantity_g, sub.food)
-        return (
-          <div key={sub.id} className="grid items-center py-1.5 pl-4 border-b border-gray-50/80 bg-gray-50/30"
-            style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
-            <div className="flex items-center gap-1 flex-wrap">
-              <span className="text-[10px] font-bold text-amber-500 mr-1">OU</span>
-              <span className="text-xs text-gray-600">{sub.food.name}</span>
-              {sourceBadge(sub.food.source, sub.food.source_label)}
-              {sub.quantity_description && <span className="text-[10px] text-gray-400 ml-1">· {sub.quantity_description}</span>}
-            </div>
-            <span className="text-center text-xs text-gray-400">{sub.quantity_g}g</span>
-            <span className="text-center text-xs text-blue-400">{r(sm.protein)}g</span>
-            <span className="text-center text-xs text-amber-400">{r(sm.carbs)}g</span>
-            <span className="text-center text-xs text-red-400">{r(sm.fat)}g</span>
-            <span className="text-center text-xs text-gray-500">{r(sm.kcal)}</span>
-            <div className="flex items-center justify-center gap-1">
-              <button
-                onClick={() => setEditingSub(sub)}
-                title="Editar substituto"
-                className="text-gray-300 hover:text-amber-500 transition-colors text-sm px-1"
-              >✏️</button>
-              <button onClick={async () => { await removeSubstitute(sub.id); onSubRemoved(mf.id, sub.id) }}
-                className="text-gray-200 hover:text-red-400 text-sm transition-colors">✕</button>
-            </div>
-          </div>
-        )
-      })}
+      {/* ── Substitutes block ── */}
+      {hasSubs && showSubs && (
+        <div
+          className="relative mb-0"
+          style={{
+            borderLeft: '3px solid rgba(245,158,11,0.35)',
+            marginLeft: '12px',
+            background: 'rgba(254,252,243,0.6)',
+            borderBottom: '1px solid #f3f4f6',
+          }}
+        >
+          {subs.map((sub, idx) => {
+            const sm = calcMacros(sub.quantity_g, sub.food)
+            const kcalDiff = Math.abs(sm.kcal - mainKcal)
+            const kcalPct = mainKcal > 0 ? kcalDiff / mainKcal : 1
+            const kcalOk = kcalPct < 0.12
+            const isLast = idx === subs.length - 1
 
+            return (
+              <div
+                key={sub.id}
+                className="grid items-center py-2 px-3 hover:bg-amber-50/50 transition-colors"
+                style={{
+                  gridTemplateColumns: COL,
+                  borderBottom: isLast ? 'none' : '1px solid rgba(245,158,11,0.1)',
+                }}
+              >
+                {/* Food name + badges */}
+                <div className="pr-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {/* OU tag */}
+                    <span
+                      className="text-[9px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
+                      style={{ background: 'rgba(245,158,11,0.18)', color: '#B45309', letterSpacing: '0.05em' }}
+                    >
+                      OU
+                    </span>
+                    <span className="text-xs font-medium text-gray-700">{sub.food.name}</span>
+                    {sourceBadge(sub.food.source, sub.food.source_label)}
+                    {/* Kcal equivalence badge */}
+                    <span
+                      className="text-[9px] font-semibold px-1.5 py-0.5 rounded"
+                      style={kcalOk
+                        ? { background: 'rgba(16,185,129,0.1)', color: '#059669', border: '1px solid rgba(16,185,129,0.2)' }
+                        : { background: 'rgba(239,68,68,0.08)', color: '#DC2626', border: '1px solid rgba(239,68,68,0.2)' }
+                      }
+                      title={`${r(sm.kcal)} kcal vs ${r(mainKcal)} kcal do alimento principal`}
+                    >
+                      {r(sm.kcal)} kcal {kcalOk ? '≈' : '≠'}
+                    </span>
+                  </div>
+                  {sub.quantity_description && (
+                    <div className="text-[10px] text-gray-400 mt-0.5 pl-5">{sub.quantity_description}</div>
+                  )}
+                </div>
+
+                {/* Qtd */}
+                <span className="text-center text-xs text-gray-400">{sub.quantity_g}g</span>
+                {/* Macros */}
+                <span className="text-center text-xs text-blue-400">{r(sm.protein)}g</span>
+                <span className="text-center text-xs text-amber-400">{r(sm.carbs)}g</span>
+                <span className="text-center text-xs text-red-400">{r(sm.fat)}g</span>
+                {/* Kcal (muted, since shown in badge) */}
+                <span className="text-center text-xs text-gray-400">{r(sm.kcal)}</span>
+
+                {/* Actions */}
+                <div className="flex items-center justify-center gap-1">
+                  <button
+                    onClick={() => setEditingSub(sub)}
+                    title="Editar substituto"
+                    className="text-gray-300 hover:text-amber-500 transition-colors w-6 flex items-center justify-center"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button
+                    onClick={async () => { await removeSubstitute(sub.id); onSubRemoved(mf.id, sub.id) }}
+                    className="text-gray-200 hover:text-red-400 text-sm transition-colors w-5 text-center"
+                  >✕</button>
+                </div>
+              </div>
+            )
+          })}
+
+          {/* Add substitute row at bottom of block */}
+          <button
+            onClick={() => setAddSubOpen(true)}
+            className="w-full flex items-center gap-1.5 py-1.5 px-3 text-xs transition-colors"
+            style={{ color: 'rgba(180,83,9,0.6)', borderTop: '1px dashed rgba(245,158,11,0.2)' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(245,158,11,0.06)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '' }}
+          >
+            <span className="font-bold">+</span>
+            <span>Adicionar outra opção</span>
+          </button>
+        </div>
+      )}
+
+      {/* Modals */}
       {addSubOpen && (
         <AddSubstituteModal
           mealFood={mf}
@@ -693,7 +814,6 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
           onAdded={sub => { onSubAdded(mf.id, sub); setAddSubOpen(false) }}
         />
       )}
-
       {editOpen && (
         <EditFoodModal
           mf={mf}
@@ -701,7 +821,6 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
           onSaved={updatedMf => { onFullUpdate(updatedMf); setEditOpen(false) }}
         />
       )}
-
       {editingSub && (
         <EditSubstituteModal
           sub={editingSub}
@@ -842,7 +961,10 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
         onClick={() => setCollapsed(!collapsed)}
       >
         <div className="flex items-center gap-3">
-          <span className="text-xl">{meal.emoji}</span>
+          {meal.emoji
+            ? <span className="text-xl">{meal.emoji}</span>
+            : <span className="w-7 h-7 rounded-lg bg-pgf-100 flex items-center justify-center text-[10px] font-black text-pgf-600">R</span>
+          }
           <div>
             <div className="font-bold text-pgf-700">{meal.name}</div>
             {meal.time_start && <div className="text-xs text-gray-400">{meal.time_start}</div>}
@@ -892,7 +1014,6 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
           {/* Orientações da refeição */}
           <div className="mt-4 pt-3 border-t border-gray-100">
             <label className="flex items-center gap-1.5 form-label mb-1.5">
-              <span>📋</span>
               <span>Orientações da refeição</span>
               {notesDirty && (
                 <span className="text-[10px] font-normal normal-case tracking-normal text-amber-500 ml-1">
@@ -944,7 +1065,7 @@ function TemplatePickerModal({ planId, onPicked, onBlank }: {
   const options = [
     {
       id: 'feminino' as const,
-      icon: '👩',
+      icon: 'F',
       label: 'Modelo Feminino',
       kcal: '~1300 kcal',
       desc: 'Porções menores, 4 refeições',
@@ -953,7 +1074,7 @@ function TemplatePickerModal({ planId, onPicked, onBlank }: {
     },
     {
       id: 'masculino' as const,
-      icon: '👨',
+      icon: 'M',
       label: 'Modelo Masculino',
       kcal: '~1800 kcal',
       desc: 'Porções maiores, 4 refeições',
@@ -978,7 +1099,12 @@ function TemplatePickerModal({ planId, onPicked, onBlank }: {
               onClick={() => pick(opt.id)}
               className={`border-2 rounded-xl p-5 text-left transition-all hover:shadow-md disabled:opacity-60 ${opt.accent}`}
             >
-              <div className="text-3xl mb-3">{opt.icon}</div>
+              <div
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-base font-black mb-3"
+                style={{ background: opt.id === 'feminino' ? 'rgba(236,72,153,0.1)' : 'rgba(37,99,235,0.1)', color: opt.id === 'feminino' ? '#DB2777' : '#2563EB' }}
+              >
+                {opt.icon}
+              </div>
               <div className="font-bold text-gray-900 text-sm">{opt.label}</div>
               <div className="mt-1">
                 <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${opt.badge}`}>{opt.kcal}</span>
@@ -997,7 +1123,7 @@ function TemplatePickerModal({ planId, onPicked, onBlank }: {
             onClick={onBlank}
             className="w-full border border-gray-200 rounded-xl py-3 text-sm text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-all disabled:opacity-60"
           >
-            ✏️ Começar do zero (plano em branco)
+            Começar do zero (plano em branco)
           </button>
         </div>
       </div>
@@ -1072,7 +1198,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setTab('pdf')} className="btn btn-outline btn-sm">📄 Pré-visualizar PDF</button>
+          <button onClick={() => setTab('pdf')} className="btn btn-outline btn-sm">Pré-visualizar PDF</button>
           <button onClick={handlePublish} disabled={publishing} className="btn btn-primary btn-sm">
             {publishing ? 'Publicando...' : '📤 Publicar para aluno'}
           </button>
@@ -1084,11 +1210,11 @@ export default function DietEditor({ patient, plan, professionalId }: {
         <div className="flex border-b border-gray-200 mb-6 no-print">
           {(['plano', 'metas', 'anamnese', 'evolucao', 'pdf'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} className={`tab ${tab === t ? 'active' : ''}`}>
-              {t === 'plano' && '🍽️ Plano Alimentar'}
-              {t === 'metas' && '🎯 Metas & Macros'}
-              {t === 'anamnese' && '📋 Anamnese'}
-              {t === 'evolucao' && '📈 Evolução'}
-              {t === 'pdf' && '📄 PDF'}
+              {t === 'plano' && 'Plano Alimentar'}
+              {t === 'metas' && 'Metas & Macros'}
+              {t === 'anamnese' && 'Anamnese'}
+              {t === 'evolucao' && 'Evolução'}
+              {t === 'pdf' && 'Visualizar PDF'}
             </button>
           ))}
         </div>
@@ -1157,7 +1283,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
                   <input name="time" type="time" className="form-input" />
                 </div>
                 <div>
-                  <label className="form-label">Emoji</label>
+                  <label className="form-label">Ícone</label>
                   <select name="emoji" className="form-select">
                     <option>☀️</option><option>🍎</option><option>🍽️</option>
                     <option>🌙</option><option>⚡</option><option>🏋️</option>
@@ -1464,7 +1590,7 @@ function PdfPreview({ patient, plan, meals, totals }: {
                 {/* Meal header */}
                 <div className="flex justify-between items-center bg-pgf-50 px-3 py-2 rounded-t border border-pgf-100 border-b-0">
                   <div className="font-bold text-sm text-pgf-700">
-                    {meal.emoji} {meal.name}{meal.time_start ? ` — ${meal.time_start}` : ''}
+                    {meal.emoji ? `${meal.emoji} ` : ''}{meal.name}{meal.time_start ? ` — ${meal.time_start}` : ''}
                   </div>
                   <div className="text-[10px] text-gray-400">
                     {r(mt.kcal)} kcal · P {r(mt.protein)}g · C {r(mt.carbs)}g · G {r(mt.fat)}g
@@ -1536,7 +1662,7 @@ function PdfPreview({ patient, plan, meals, totals }: {
                   {meal.notes && (
                     <div className="px-3 py-2.5 border-t border-pgf-100 bg-pgf-50/60">
                       <div className="text-[9px] font-bold text-pgf-600 uppercase tracking-wider mb-1">
-                        📋 Orientações
+                        Orientações
                       </div>
                       <p className="text-[11px] text-gray-600 leading-relaxed whitespace-pre-line">{meal.notes}</p>
                     </div>
