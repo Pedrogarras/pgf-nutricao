@@ -295,7 +295,7 @@ export default async function AlunoPage({
                         food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }
                         quantity_g: number
                         quantity_description: string | null
-                        substitutes?: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }[]
+                        substitutes?: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null; notes: string | null }[]
                       }) => (
                         <div key={mf.id}>
                           {/* Alimento principal */}
@@ -316,14 +316,21 @@ export default async function AlunoPage({
                                 borderBottom: si === (mf.substitutes!.length - 1) ? '1px solid var(--dark-border)' : '1px solid rgba(37,99,235,0.08)',
                                 background: 'rgba(251,191,36,0.04)',
                               }}>
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
-                                  style={{ background: 'rgba(251,191,36,0.15)', color: '#FCD34D' }}>
-                                  OU
-                                </span>
-                                <span className="text-xs truncate" style={{ color: 'rgba(197,205,240,0.75)' }}>
-                                  {sub.food.name}
-                                </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
+                                    style={{ background: 'rgba(251,191,36,0.15)', color: '#FCD34D' }}>
+                                    OU
+                                  </span>
+                                  <span className="text-xs truncate" style={{ color: 'rgba(197,205,240,0.75)' }}>
+                                    {sub.food.name}
+                                  </span>
+                                </div>
+                                {sub.notes && (
+                                  <div className="text-[10px] italic mt-0.5 ml-8" style={{ color: 'rgba(251,191,36,0.7)' }}>
+                                    {sub.notes}
+                                  </div>
+                                )}
                               </div>
                               <span className="text-xs ml-2 flex-shrink-0" style={{ color: 'rgba(197,205,240,0.45)' }}>
                                 {sub.quantity_description ?? `${sub.quantity_g}g`}

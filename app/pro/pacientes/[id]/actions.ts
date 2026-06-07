@@ -36,7 +36,7 @@ export async function duplicateDietPlan(sourcePlanId: string, patientId: string,
       kcal_goal, protein_goal_g, carbs_goal_g, fat_goal_g, notes, anamnesis,
       meals(id, name, time_start, emoji, sort_order, notes,
         meal_foods(id, food_id, quantity_g, quantity_description, sort_order,
-          meal_food_substitutes(food_id, quantity_g, quantity_description, sort_order)
+          meal_food_substitutes(food_id, quantity_g, quantity_description, notes, sort_order)
         )
       )
     `)
@@ -67,7 +67,7 @@ export async function duplicateDietPlan(sourcePlanId: string, patientId: string,
   if (planErr || !newPlan) return { error: planErr?.message ?? 'Erro ao duplicar' }
 
   // Duplicate meals
-  const meals = (source.meals as { id: string; name: string; time_start: string | null; emoji: string; sort_order: number; notes: string | null; meal_foods: { id: string; food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number; meal_food_substitutes: { food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number }[] }[] }[]) ?? []
+  const meals = (source.meals as { id: string; name: string; time_start: string | null; emoji: string; sort_order: number; notes: string | null; meal_foods: { id: string; food_id: string; quantity_g: number; quantity_description: string | null; sort_order: number; meal_food_substitutes: { food_id: string; quantity_g: number; quantity_description: string | null; notes: string | null; sort_order: number }[] }[] }[]) ?? []
   for (const meal of meals) {
     const { data: newMeal } = await supabase
       .from('meals')
@@ -90,6 +90,7 @@ export async function duplicateDietPlan(sourcePlanId: string, patientId: string,
           food_id: sub.food_id,
           quantity_g: sub.quantity_g,
           quantity_description: sub.quantity_description,
+          notes: sub.notes ?? null,
           sort_order: sub.sort_order,
         })
       }

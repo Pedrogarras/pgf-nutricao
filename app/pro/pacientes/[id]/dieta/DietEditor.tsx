@@ -10,7 +10,7 @@ import {
 // ===================== TIPOS =====================
 interface FoodMeasure { id: string; description: string; grams: number }
 interface LocalFood extends Food { }
-interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number }
+interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number; notes: string | null }
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
 interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
 interface LocalAnamnesis { allergies?: string | null; dislikes?: string | null; preferences?: string | null; meals_per_day?: string | null; supplements?: string | null; medications?: string | null; pathologies?: string | null; sleep_quality?: string | null; stress_level?: string | null; notes?: string | null }
@@ -262,6 +262,7 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
   const [selectedFood, setSelectedFood] = useState<LocalFood | null>(null)
   const [quantity, setQuantity] = useState('')
   const [description, setDescription] = useState('')
+  const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
 
   // Kcal total do alimento principal
@@ -288,8 +289,8 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
   async function handleAdd() {
     if (!selectedFood || !quantity) return
     setLoading(true)
-    const result = await addSubstitute(mealFood.id, selectedFood.id, Number(quantity), description || `${quantity}g`)
-    if (result?.data) onAdded({ ...result.data, food: selectedFood } as LocalSubstitute)
+    const result = await addSubstitute(mealFood.id, selectedFood.id, Number(quantity), description || `${quantity}g`, notes.trim() || null)
+    if (result?.data) onAdded({ ...result.data, food: selectedFood, notes: notes.trim() || null } as LocalSubstitute)
     setLoading(false)
     onClose()
   }
@@ -356,6 +357,16 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
                   ))}
                 </div>
               )}
+
+              <div>
+                <label className="form-label">Instrução de preparo (opcional)</label>
+                <input
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  className="form-input"
+                  placeholder="ex: Escorrer bem o líquido antes de usar"
+                />
+              </div>
             </>
           )}
         </div>
@@ -379,6 +390,7 @@ function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
 }) {
   const [quantity, setQuantity] = useState(String(sub.quantity_g))
   const [description, setDescription] = useState(sub.quantity_description || `${sub.quantity_g}g`)
+  const [notes, setNotes] = useState(sub.notes ?? '')
   const [loading, setLoading] = useState(false)
 
   const qty = parseFloat(quantity) || 0
@@ -401,12 +413,13 @@ function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
     if (!quantity || qty <= 0) return
     setLoading(true)
     const desc = description || `${qty}g`
+    const notesVal = notes.trim() || null
     await fetch('/api/substitutes', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: sub.id, quantity_g: qty, quantity_description: desc }),
+      body: JSON.stringify({ id: sub.id, quantity_g: qty, quantity_description: desc, notes: notesVal }),
     })
-    onSaved({ ...sub, quantity_g: qty, quantity_description: desc })
+    onSaved({ ...sub, quantity_g: qty, quantity_description: desc, notes: notesVal })
     setLoading(false)
     onClose()
   }
@@ -489,6 +502,16 @@ function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
               Diferença de {r(diff)} kcal em relação ao alimento principal ({mainKcal} kcal).
             </p>
           )}
+
+          <div>
+            <label className="form-label">Instrução de preparo (opcional)</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              className="form-input"
+              placeholder="ex: Escorrer bem o líquido antes de usar"
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 px-5 pb-5">
@@ -770,6 +793,9 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
                   </div>
                   {sub.quantity_description && (
                     <div className="text-[10px] text-gray-400 mt-0.5 pl-5">{sub.quantity_description}</div>
+                  )}
+                  {sub.notes && (
+                    <div className="text-[10px] text-amber-600 mt-0.5 pl-5 italic">{sub.notes}</div>
                   )}
                 </div>
 
@@ -1872,11 +1898,16 @@ function PdfPreview({ patient, plan, meals, totals }: {
                             <div key={sub.id}
                               className={`grid items-center px-3 py-1.5 bg-gray-50 ${!subIsLast ? 'border-b border-gray-100' : ''}`}
                               style={{ gridTemplateColumns: '1fr 120px 50px 50px 50px 50px' }}>
-                              <div className="flex items-center gap-1 pl-2">
-                                <span className="text-[9px] font-bold text-amber-500 border border-amber-300 px-1 rounded mr-1">OU</span>
-                                <span className="text-[11px] text-gray-600">{sub.food.name}</span>
-                                {(sub.food.source_label || sub.food.source) && sub.food.source !== 'custom' && (
-                                  <span className="text-[8px] text-gray-400">({sub.food.source_label || sub.food.source})</span>
+                              <div className="pl-2">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] font-bold text-amber-500 border border-amber-300 px-1 rounded mr-1">OU</span>
+                                  <span className="text-[11px] text-gray-600">{sub.food.name}</span>
+                                  {(sub.food.source_label || sub.food.source) && sub.food.source !== 'custom' && (
+                                    <span className="text-[8px] text-gray-400">({sub.food.source_label || sub.food.source})</span>
+                                  )}
+                                </div>
+                                {sub.notes && (
+                                  <div className="text-[10px] text-amber-600 italic mt-0.5 ml-5">{sub.notes}</div>
                                 )}
                               </div>
                               <div className="text-right text-[11px] text-gray-500">{sub.quantity_description || `${sub.quantity_g}g`}</div>

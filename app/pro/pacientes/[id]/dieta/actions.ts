@@ -113,7 +113,7 @@ export async function updateMealFood(mealFoodId: string, quantityG: number, desc
   await supabase.from('meal_foods').update(update).eq('id', mealFoodId)
 }
 
-export async function addSubstitute(mealFoodId: string, foodId: string, quantityG: number, description: string) {
+export async function addSubstitute(mealFoodId: string, foodId: string, quantityG: number, description: string, notes?: string | null) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
@@ -134,6 +134,7 @@ export async function addSubstitute(mealFoodId: string, foodId: string, quantity
     food_id: foodId,
     quantity_g: quantityG,
     quantity_description: description,
+    notes: notes ?? null,
     sort_order,
   }).select().single()
 
