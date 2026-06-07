@@ -229,6 +229,12 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               Medidas
             </Link>
             <Link
+              href={`/pro/pacientes/${patient.id}/fotos`}
+              className="btn btn-outline btn-sm"
+            >
+              📸 Fotos
+            </Link>
+            <Link
               href={`/pro/pacientes/${patient.id}/treino`}
               className="btn btn-outline btn-sm"
             >
