@@ -939,6 +939,14 @@ export default async function AlunoPage({
               hint: 'Badges e XP', dot: null,
             },
             {
+              href: '/aluno/saude', icon: '🩺', label: 'Minha Saúde',
+              hint: 'Painel clínico', dot: null,
+            },
+            {
+              href: '/aluno/treino/log', icon: '🏋️', label: 'Treino Log',
+              hint: 'Registrar treino', dot: null,
+            },
+            {
               href: '/aluno/notificacoes', icon: '🔔', label: 'Avisos',
               hint: 'Notificações', dot: null,
             },
