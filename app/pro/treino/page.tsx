@@ -11,12 +11,15 @@ export default async function TreinoPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between">
+      <div
+        className="sticky top-0 z-40 px-8 h-14 flex items-center justify-between"
+        style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}
+      >
         <div>
-          <h1 className="text-lg font-bold">Prescrição de Treino</h1>
-          <p className="text-xs text-gray-400">Selecione um paciente para prescrever</p>
+          <h1 className="text-base font-bold text-white">Prescrição de Treino</h1>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>Selecione um paciente para prescrever</p>
         </div>
-        <Link href="/pro/exercicios" className="btn btn-outline btn-sm">🎥 Gerenciar Exercícios</Link>
+        <Link href="/pro/exercicios" className="btn btn-outline btn-sm">Gerenciar Exercícios</Link>
       </div>
 
       <div className="p-8">
@@ -34,7 +37,6 @@ export default async function TreinoPage() {
 
           {!patients?.length && (
             <div className="col-span-3 text-center py-16">
-              <div className="text-5xl mb-3">💪</div>
               <div className="font-semibold text-gray-600 mb-1">Nenhum paciente ainda</div>
               <Link href="/pro/pacientes" className="btn btn-primary mt-3">Cadastrar paciente</Link>
             </div>

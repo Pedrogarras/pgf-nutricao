@@ -36,10 +36,13 @@ export default function ExerciciosPage() {
 
   return (
     <div>
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between">
+      <div
+        className="sticky top-0 z-40 px-8 h-14 flex items-center justify-between"
+        style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}
+      >
         <div>
-          <h1 className="text-lg font-bold">Biblioteca de Exercícios</h1>
-          <p className="text-xs text-gray-400">{exercises.length} exercícios cadastrados</p>
+          <h1 className="text-base font-bold text-white">Biblioteca de Exercícios</h1>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{exercises.length} exercícios cadastrados</p>
         </div>
         <button onClick={() => setAddOpen(true)} className="btn btn-primary">+ Novo Exercício</button>
       </div>
@@ -65,7 +68,9 @@ export default function ExerciciosPage() {
                 </div>
               ) : (
                 <div className="aspect-video bg-pgf-50 flex items-center justify-center">
-                  <span className="text-4xl">🎥</span>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4">
+                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
                 </div>
               )}
               <div className="p-4">
@@ -82,7 +87,6 @@ export default function ExerciciosPage() {
 
           {filtered.length === 0 && (
             <div className="col-span-3 text-center py-16">
-              <div className="text-5xl mb-3">🎥</div>
               <div className="font-semibold text-gray-600 mb-1">Biblioteca vazia</div>
               <div className="text-sm text-gray-400 mb-4">Adicione seus primeiros exercícios com vídeos</div>
               <button onClick={() => setAddOpen(true)} className="btn btn-primary">+ Adicionar exercício</button>

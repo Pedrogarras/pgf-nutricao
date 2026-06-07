@@ -476,7 +476,7 @@ function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
           </div>
           {!kcalMatch && qty > 0 && (
             <p className="text-[11px] text-orange-500">
-              ⚠️ Diferença de {r(diff)} kcal em relação ao alimento principal ({mainKcal} kcal).
+              Diferença de {r(diff)} kcal em relação ao alimento principal ({mainKcal} kcal).
             </p>
           )}
         </div>
@@ -484,7 +484,7 @@ function EditSubstituteModal({ sub, mainMf, onClose, onSaved }: {
         <div className="flex justify-end gap-3 px-5 pb-5">
           <button onClick={onClose} className="btn btn-ghost">Cancelar</button>
           <button onClick={handleSave} disabled={!quantity || qty <= 0 || loading} className="btn btn-primary">
-            {loading ? 'Salvando...' : '✓ Salvar substituto'}
+            {loading ? 'Salvando...' : 'Salvar substituto'}
           </button>
         </div>
       </div>
@@ -576,7 +576,7 @@ function EditFoodModal({ mf, onClose, onSaved }: {
           </div>
 
           <p className="text-[11px] text-gray-400">
-            💡 Selecione uma medida caseira para preencher os campos automaticamente, ou digite a gramatura para calcular a descrição proporcional.
+            Selecione uma medida caseira para preencher automaticamente, ou digite a gramatura para calcular a descrição proporcional.
           </p>
 
           {/* Preview macros */}
@@ -598,7 +598,7 @@ function EditFoodModal({ mf, onClose, onSaved }: {
         <div className="flex justify-end gap-3 px-5 pb-5">
           <button onClick={onClose} className="btn btn-ghost">Cancelar</button>
           <button onClick={handleSave} disabled={!quantity || qty <= 0 || loading} className="btn btn-primary">
-            {loading ? 'Salvando...' : '✓ Salvar alteração'}
+            {loading ? 'Salvando...' : 'Salvar alteração'}
           </button>
         </div>
       </div>
@@ -1173,9 +1173,18 @@ export default function DietEditor({ patient, plan, professionalId }: {
   }
 
   async function handlePublish() {
+    if (meals.length === 0) {
+      showToast('Adicione pelo menos uma refeição antes de publicar.')
+      return
+    }
+    const totalFoods = meals.reduce((sum, m) => sum + m.meal_foods.length, 0)
+    if (totalFoods === 0) {
+      showToast('Adicione alimentos às refeições antes de publicar.')
+      return
+    }
     setPublishing(true)
     await publishPlan(plan.id)
-    showToast('✅ Plano publicado! O aluno já pode acessar.')
+    showToast('Plano publicado! O aluno já pode acessar.')
     setPublishing(false)
   }
 
@@ -1184,7 +1193,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
       {showTemplatePicker && (
         <TemplatePickerModal
           planId={plan.id}
-          onPicked={newMeals => { setMeals(newMeals); setShowTemplatePicker(false); showToast('✅ Template aplicado! Ajuste as quantidades conforme necessário.') }}
+          onPicked={newMeals => { setMeals(newMeals); setShowTemplatePicker(false); showToast('Template aplicado. Ajuste as quantidades conforme necessário.') }}
           onBlank={() => setShowTemplatePicker(false)}
         />
       )}
@@ -1201,7 +1210,7 @@ export default function DietEditor({ patient, plan, professionalId }: {
         <div className="flex gap-2">
           <button onClick={() => setTab('pdf')} className="btn btn-outline btn-sm">Pré-visualizar PDF</button>
           <button onClick={handlePublish} disabled={publishing} className="btn btn-primary btn-sm">
-            {publishing ? 'Publicando...' : '📤 Publicar para aluno'}
+            {publishing ? 'Publicando...' : 'Publicar para aluno'}
           </button>
         </div>
       </div>
@@ -1326,7 +1335,7 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
       notes: fd.get('notes') as string,
     })
     setSaving(false)
-    onSaved('✅ Metas salvas com sucesso!')
+    onSaved('Metas salvas.')
   }
 
   const w = patient.weight_kg ?? 0, h = patient.height_cm ?? 0
@@ -1406,7 +1415,7 @@ function AnamneseTab({ patient, planId, onSaved }: { patient: Patient; planId: s
       }
     })
     setSaving(false)
-    onSaved('✅ Anamnese salva!')
+    onSaved('Anamnese salva.')
   }
 
   return (
@@ -1544,7 +1553,7 @@ function PdfPreview({ patient, plan, meals, totals }: {
   return (
     <div>
       <div className="flex justify-end gap-2 mb-4 no-print">
-        <button onClick={() => window.print()} className="btn btn-primary">🖨️ Imprimir / Salvar PDF</button>
+        <button onClick={() => window.print()} className="btn btn-primary">Imprimir / Salvar PDF</button>
       </div>
 
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-lg max-w-3xl mx-auto" id="pdf-content">

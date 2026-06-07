@@ -43,7 +43,7 @@ export default function NewPatientModal({ professionalId }: { professionalId: st
                 <div>
                   <label className="form-label">Data de nascimento *</label>
                   <input name="date_of_birth" type="date" required className="form-input" />
-                  <p className="text-[11px] text-gray-400 mt-1">Usada como senha do aluno</p>
+                  <p className="text-[11px] text-gray-400 mt-1">Dados clínicos (cálculo de IMC, etc.)</p>
                 </div>
                 <div>
                   <label className="form-label">Sexo</label>

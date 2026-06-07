@@ -53,7 +53,7 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
   async function handlePublish() {
     setPublishing(true)
     await fetch('/api/workout/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan_id: plan.id }) })
-    showToast('✅ Treino publicado! O aluno já pode visualizar.')
+    showToast('Treino publicado! O aluno já pode visualizar.')
     setPublishing(false)
   }
 
@@ -64,18 +64,17 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
 
   return (
     <div>
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-100 px-8 h-15 flex items-center justify-between">
+      <div className="sticky top-0 z-40 px-8 h-14 flex items-center justify-between" style={{ background: 'var(--dark-surface)', borderBottom: '1px solid var(--dark-border)' }}>
         <div className="flex items-center gap-3">
-          <Link href="/pro/pacientes" className="btn btn-ghost btn-sm">← Pacientes</Link>
+          <Link href={`/pro/pacientes/${patient.id}`} className="btn btn-ghost btn-sm text-white/60">← {patient.full_name}</Link>
           <div>
-            <div className="font-bold">{patient.full_name}</div>
-            <div className="text-xs text-gray-400">Plano de Treino</div>
+            <div className="font-bold text-white">Plano de Treino</div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Link href="/pro/exercicios" className="btn btn-outline btn-sm">🎥 Gerenciar exercícios</Link>
+          <Link href="/pro/exercicios" className="btn btn-outline btn-sm">Gerenciar exercícios</Link>
           <button onClick={handlePublish} disabled={publishing} className="btn btn-primary btn-sm">
-            {publishing ? 'Publicando...' : '📤 Publicar treino'}
+            {publishing ? 'Publicando...' : 'Publicar treino'}
           </button>
         </div>
       </div>
@@ -83,7 +82,6 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
       <div className="p-8">
         {days.length === 0 && (
           <div className="text-center py-16">
-            <div className="text-5xl mb-3">💪</div>
             <div className="font-semibold text-gray-600 mb-1">Nenhum dia de treino</div>
             <div className="text-sm text-gray-400 mb-4">Adicione o primeiro dia (ex: Treino A, Treino B...)</div>
             <button onClick={() => setAddDayOpen(true)} className="btn btn-primary">+ Adicionar Dia de Treino</button>
@@ -94,7 +92,7 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
           {days.map(day => (
             <div key={day.id} className="card overflow-hidden">
               <div className="flex items-center justify-between px-5 py-3.5 bg-pgf-50 border-b border-pgf-100">
-                <div className="font-bold text-pgf-700">💪 {day.name}</div>
+                <div className="font-bold text-pgf-700">{day.name}</div>
                 <div className="text-xs text-gray-400">{day.workout_exercises.length} exercício(s)</div>
               </div>
               <div className="px-5 pb-4">
@@ -143,7 +141,7 @@ export default function WorkoutEditor({ patient, plan, exercises }: { patient: P
                             ))}
                           </select>
                           {exercises.length === 0 && (
-                            <p className="text-xs text-amber-600 mt-1">⚠️ Nenhum exercício cadastrado ainda. <Link href="/pro/exercicios" className="underline">Adicionar exercícios</Link></p>
+                            <p className="text-xs text-amber-600 mt-1">Nenhum exercício cadastrado ainda. <Link href="/pro/exercicios" className="underline">Adicionar exercícios</Link></p>
                           )}
                         </div>
                         <div className="grid grid-cols-3 gap-3">
