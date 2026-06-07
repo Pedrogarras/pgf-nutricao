@@ -98,6 +98,9 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
 
   const { id } = await params
 
+  const sevenDaysAgoStr = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0]
+  const todayStr2 = new Date().toISOString().split('T')[0]
+
   const [
     { data: patient },
     { data: records },
@@ -109,6 +112,7 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
     { data: anamnesis },
     { data: lastDiary },
     { data: upcomingConsultation },
+    { data: recentWorkoutLogs },
   ] = await Promise.all([
     supabase.from('patients').select('*').eq('id', id).eq('professional_id', user.id).single(),
     supabase.from('anthropometric_records')
@@ -146,6 +150,13 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
       .in('status', ['agendado', 'confirmado'])
       .gte('scheduled_at', new Date().toISOString())
       .order('scheduled_at').limit(1).maybeSingle(),
+    // Workout logs last 7 days
+    supabase.from('workout_logs')
+      .select('id, workout_day_id, logged_at, duration_min, rpe, notes')
+      .eq('patient_id', id)
+      .gte('logged_at', sevenDaysAgoStr)
+      .lte('logged_at', todayStr2)
+      .order('logged_at', { ascending: false }),
   ])
 
   if (!patient) redirect('/pro/pacientes')
@@ -369,6 +380,67 @@ export default async function ProtocoloPage({ params }: { params: Promise<{ id: 
                 <div className="mt-2 text-xs text-amber-500">⚠ Sem registro hoje</div>
               )}
             </div>
+
+            {/* Workout logs (last 7 days) */}
+            {(() => {
+              const wLogs = recentWorkoutLogs ?? []
+              const wDates = new Set(wLogs.map(l => l.logged_at))
+              const avgRpe = wLogs.filter(l => l.rpe).length > 0
+                ? Math.round(wLogs.filter(l => l.rpe).reduce((s, l) => s + (l.rpe ?? 0), 0) / wLogs.filter(l => l.rpe).length * 10) / 10
+                : null
+              const avgDuration = wLogs.filter(l => l.duration_min).length > 0
+                ? Math.round(wLogs.filter(l => l.duration_min).reduce((s, l) => s + (l.duration_min ?? 0), 0) / wLogs.filter(l => l.duration_min).length)
+                : null
+              if (wLogs.length === 0 && !patient.auth_user_id) return null
+              return (
+                <div className="card p-5">
+                  <SectionHead title="Treinos (7 dias)" href={`/pro/pacientes/${id}/treino`} linkLabel="Ver plano" />
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="rounded-xl p-3 text-center"
+                      style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+                      <div className="text-xl font-black"
+                        style={{ color: wLogs.length >= 3 ? '#4ADE80' : wLogs.length > 0 ? '#FBBF24' : '#9CA3AF' }}>
+                        {wLogs.length}
+                      </div>
+                      <div className="text-[10px] text-gray-500">treinos</div>
+                    </div>
+                    <div className="rounded-xl p-3 text-center"
+                      style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+                      <div className="text-xl font-black" style={{ color: avgRpe ? '#FB923C' : '#9CA3AF' }}>
+                        {avgRpe ?? '—'}
+                      </div>
+                      <div className="text-[10px] text-gray-500">RPE médio</div>
+                    </div>
+                  </div>
+                  {/* Mini calendar dots */}
+                  <div className="flex gap-1 mb-2">
+                    {Array.from({ length: 7 }, (_, i) => {
+                      const d = new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0]
+                      const has = wDates.has(d)
+                      const isT = d === today
+                      return (
+                        <div key={d}
+                          className="flex-1 h-3 rounded-full"
+                          title={d}
+                          style={{
+                            background: has ? '#4ADE80' : isT ? 'rgba(37,99,235,0.3)' : 'rgba(255,255,255,0.06)',
+                            border: isT ? '1px solid rgba(37,99,235,0.4)' : undefined,
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+                  {avgDuration && (
+                    <div className="text-xs text-gray-500">
+                      Duração média: <span className="font-bold text-gray-700">{avgDuration}min</span>
+                    </div>
+                  )}
+                  {wLogs.length === 0 && (
+                    <div className="text-xs text-amber-500 mt-1">⚠ Nenhum treino registrado esta semana</div>
+                  )}
+                </div>
+              )
+            })()}
 
           </div>
 
