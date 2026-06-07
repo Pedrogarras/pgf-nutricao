@@ -12,7 +12,7 @@ export async function createPatient(formData: FormData) {
   const dob = formData.get('date_of_birth') as string
 
   if (!fullName) return { error: 'Nome é obrigatório.' }
-  if (!dob) return { error: 'Data de nascimento é obrigatória (usada como senha do aluno).' }
+  if (!dob) return { error: 'Data de nascimento é obrigatória.' }
 
   const { error } = await supabase.from('patients').insert({
     professional_id: PROF_ID,
@@ -24,6 +24,7 @@ export async function createPatient(formData: FormData) {
     weight_kg: formData.get('weight_kg') ? Number(formData.get('weight_kg')) : null,
     height_cm: formData.get('height_cm') ? Number(formData.get('height_cm')) : null,
     goal: (formData.get('goal') as string) || null,
+    activity_level: (formData.get('activity_level') as string) || 'levemente_ativo',
     notes: (formData.get('notes') as string) || null,
     active: true,
   })

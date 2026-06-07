@@ -7,9 +7,16 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [{ count: totalPatients }, { data: recentPatients }] = await Promise.all([
+  const [
+    { count: totalPatients },
+    { data: recentPatients },
+    { count: activePlans },
+    { count: patientsWithAccess },
+  ] = await Promise.all([
     supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
     supabase.from('patients').select('id,full_name,goal,weight_kg,created_at').eq('professional_id', user.id).eq('active', true).order('created_at', { ascending: false }).limit(5),
+    supabase.from('diet_plans').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true),
+    supabase.from('patients').select('*', { count: 'exact', head: true }).eq('professional_id', user.id).eq('active', true).not('auth_user_id', 'is', null),
   ])
 
   const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
@@ -32,9 +39,9 @@ export default async function DashboardPage() {
         <div className="grid grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Pacientes Ativos', value: totalPatients ?? 0, badge: 'Total', color: 'text-pgf-600' },
-            { label: 'Alimentos TACO', value: '120+', badge: 'Banco', color: 'text-emerald-600' },
-            { label: 'Planos Ativos', value: '—', badge: 'Dieta + Treino', color: 'text-amber-600' },
-            { label: 'Versão', value: '1.0', badge: 'PGF App', color: 'text-gray-600' },
+            { label: 'Com Acesso ao App', value: patientsWithAccess ?? 0, badge: 'Login ativo', color: 'text-emerald-600' },
+            { label: 'Planos de Dieta Ativos', value: activePlans ?? 0, badge: 'Publicados', color: 'text-amber-600' },
+            { label: 'Pendentes', value: (totalPatients ?? 0) - (patientsWithAccess ?? 0), badge: 'Sem acesso', color: 'text-gray-600' },
           ].map(s => (
             <div key={s.label} className="card p-5">
               <div className="text-xs text-gray-400 font-medium uppercase tracking-wide">{s.label}</div>

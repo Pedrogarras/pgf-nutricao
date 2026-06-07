@@ -70,7 +70,7 @@ export default function NewPatientModal({ professionalId }: { professionalId: st
                   <label className="form-label">Altura (cm)</label>
                   <input name="height_cm" type="number" step="0.1" className="form-input" placeholder="165" />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <label className="form-label">Objetivo</label>
                   <select name="goal" className="form-select">
                     <option value="">Selecione</option>
@@ -80,6 +80,15 @@ export default function NewPatientModal({ professionalId }: { professionalId: st
                     <option value="Saúde geral">Saúde geral</option>
                     <option value="Performance esportiva">Performance esportiva</option>
                     <option value="Reabilitação">Reabilitação</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Nível de atividade</label>
+                  <select name="activity_level" defaultValue="levemente_ativo" className="form-select">
+                    <option value="sedentario">Sedentário</option>
+                    <option value="levemente_ativo">Levemente ativo</option>
+                    <option value="moderadamente_ativo">Moderadamente ativo</option>
+                    <option value="muito_ativo">Muito ativo</option>
                   </select>
                 </div>
                 <div className="col-span-2">

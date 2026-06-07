@@ -33,7 +33,7 @@ export default async function PacientesPage() {
           <table className="w-full">
             <thead>
               <tr>
-                {['Paciente', 'Objetivo', 'Peso / Altura', 'Nascimento', 'Ações'].map(h => (
+                {['Paciente', 'Objetivo', 'Dados', 'Acesso', 'Ações'].map(h => (
                   <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b">
                     {h}
                   </th>
@@ -41,7 +41,11 @@ export default async function PacientesPage() {
               </tr>
             </thead>
             <tbody>
-              {(patients ?? []).map(p => (
+              {(patients ?? []).map(p => {
+                const age = p.date_of_birth
+                  ? Math.floor((Date.now() - new Date(p.date_of_birth + 'T12:00:00').getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+                  : null
+                return (
                 <tr key={p.id} className="border-b border-gray-50 hover:bg-pgf-50/30 transition-colors">
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
@@ -56,16 +60,26 @@ export default async function PacientesPage() {
                   </td>
                   <td className="px-5 py-3.5">
                     <span className={`badge ${
-                      p.goal?.includes('massa') ? 'badge-blue' :
-                      p.goal?.includes('emagr') ? 'badge-orange' : 'badge-gray'
+                      p.goal?.toLowerCase().includes('massa') ? 'badge-blue' :
+                      p.goal?.toLowerCase().includes('emagr') ? 'badge-orange' : 'badge-gray'
                     }`}>{p.goal ?? '—'}</span>
                   </td>
                   <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {p.weight_kg ? `${p.weight_kg} kg` : '—'}
-                    {p.height_cm ? ` / ${p.height_cm} cm` : ''}
+                    <div>{p.weight_kg ? `${p.weight_kg} kg` : '—'}{p.height_cm ? ` · ${p.height_cm} cm` : ''}</div>
+                    {age && <div className="text-xs text-gray-400">{age} anos · {p.gender === 'F' ? 'F' : p.gender === 'M' ? 'M' : '—'}</div>}
                   </td>
-                  <td className="px-5 py-3.5 text-sm text-gray-500">
-                    {p.date_of_birth ? new Date(p.date_of_birth + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
+                  <td className="px-5 py-3.5">
+                    {p.auth_user_id ? (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 4px rgba(74,222,128,0.6)' }} />
+                        <span className="text-xs text-green-600 font-medium">Ativo</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-gray-300" />
+                        <span className="text-xs text-gray-400">Sem acesso</span>
+                      </div>
+                    )}
                   </td>
                   <td className="px-5 py-3.5">
                     <div className="flex gap-2">
@@ -74,7 +88,8 @@ export default async function PacientesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+                )
+              })}
               {!patients?.length && (
                 <tr><td colSpan={5} className="px-5 py-16 text-center text-gray-400">
                   <div className="font-semibold text-gray-600 mb-1">Nenhum paciente cadastrado</div>
