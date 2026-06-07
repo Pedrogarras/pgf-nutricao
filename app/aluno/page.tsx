@@ -909,6 +909,10 @@ export default async function AlunoPage({
               href: '/aluno/receitas', icon: '👨‍🍳', label: 'Receitas',
               hint: null, dot: null,
             },
+            {
+              href: '/aluno/historico', icon: '📖', label: 'Jornada',
+              hint: null, dot: null,
+            },
           ]
           const dotColors: Record<string, string> = {
             green: '#4ade80', amber: '#fbbf24', blue: '#60a5fa',
