@@ -655,27 +655,20 @@ export default async function AlunoPage({
         )}
 
         {/* Quick shortcuts */}
-        <div className="grid grid-cols-4 gap-2">
-          <Link href="/aluno/diario" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="text-xl">📔</div>
-            <div className="text-[10px] font-semibold text-white">Diário</div>
-          </Link>
-          <Link href="/aluno/agua" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="text-xl">💧</div>
-            <div className="text-[10px] font-semibold text-white">Água</div>
-          </Link>
-          <Link href="/aluno/evolucao" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="text-xl">📈</div>
-            <div className="text-[10px] font-semibold text-white">Evolução</div>
-          </Link>
-          <Link href="/aluno/suplementos" className="flex flex-col items-center gap-1.5 rounded-xl py-3.5 transition-all"
-            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
-            <div className="text-xl">💊</div>
-            <div className="text-[10px] font-semibold text-white">Suplementos</div>
-          </Link>
+        <div className="grid grid-cols-5 gap-2">
+          {[
+            { href: '/aluno/diario',      icon: '📔', label: 'Diário' },
+            { href: '/aluno/agua',        icon: '💧', label: 'Água' },
+            { href: '/aluno/evolucao',    icon: '📈', label: 'Evolução' },
+            { href: '/aluno/suplementos', icon: '💊', label: 'Suplementos' },
+            { href: '/aluno/exames',      icon: '🔬', label: 'Exames' },
+          ].map(item => (
+            <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1.5 rounded-xl py-3 transition-all"
+              style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+              <div className="text-xl">{item.icon}</div>
+              <div className="text-[10px] font-semibold text-white">{item.label}</div>
+            </Link>
+          ))}
         </div>
 
         {/* Footer ornament */}
