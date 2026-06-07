@@ -81,7 +81,7 @@ function FoodSearch({ onSelect, placeholder }: { onSelect: (food: LocalFood) => 
         value={query}
         onChange={e => search(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
-        placeholder={placeholder ?? '🔍 Buscar alimento (ex: frango, arroz, ovo...)'}
+        placeholder={placeholder ?? 'Buscar alimento (ex: frango, arroz, ovo...)'}
         className="form-input text-sm"
       />
       {loading && <div className="absolute right-3 top-2.5 text-gray-400 text-xs">Buscando...</div>}
@@ -297,7 +297,7 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
         </div>
         <div className="p-5 space-y-4">
-          <FoodSearch onSelect={handleFoodSelect} placeholder="🔍 Buscar substituto equivalente..." />
+          <FoodSearch onSelect={handleFoodSelect} placeholder="Buscar substituto equivalente..." />
 
           {selectedFood && (
             <>

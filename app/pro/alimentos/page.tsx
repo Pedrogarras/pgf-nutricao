@@ -57,7 +57,7 @@ export default function AlimentosPage() {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="🔍 Buscar alimento..."
+            placeholder="Buscar alimento..."
             className="form-input flex-1 max-w-sm"
           />
           <div className="flex gap-2">

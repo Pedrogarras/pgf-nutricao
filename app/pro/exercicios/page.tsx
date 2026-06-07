@@ -46,7 +46,7 @@ export default function ExerciciosPage() {
 
       <div className="p-8">
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="🔍 Buscar exercício..." className="form-input max-w-sm mb-6" />
+          placeholder="Buscar exercício..." className="form-input max-w-sm mb-6" />
 
         <div className="grid grid-cols-3 gap-4">
           {filtered.map(ex => (

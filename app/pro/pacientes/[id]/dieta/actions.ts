@@ -227,10 +227,12 @@ export async function applyTemplate(planId: string, template: TemplateId) {
         .select()
         .single()
 
-      if (mf) createdFoods.push({ ...mf, food, substitutes: [] })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (mf) createdFoods.push({ ...(mf as any), food, substitutes: [] })
     }
 
-    createdMeals.push({ ...meal, meal_foods: createdFoods })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    createdMeals.push({ ...(meal as any), meal_foods: createdFoods })
   }
 
   return { meals: createdMeals }

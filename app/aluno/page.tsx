@@ -58,7 +58,17 @@ export default async function AlunoPage({
   const plans = activePlans ?? []
   const selectedPlan = plans.find(p => p.id === selectedPlanId) ?? plans[0] ?? null
 
-  const meals = selectedPlan?.meals?.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order) ?? []
+  const meals = (selectedPlan?.meals ?? [])
+    .sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order)
+    .map((m: { meal_foods?: { sort_order: number; substitutes?: { sort_order: number }[] }[] }) => ({
+      ...m,
+      meal_foods: (m.meal_foods ?? [])
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map(mf => ({
+          ...mf,
+          substitutes: (mf.substitutes ?? []).sort((a, b) => a.sort_order - b.sort_order),
+        })),
+    }))
   const days = workoutPlan?.workout_days?.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order) ?? []
 
   function r(n: number) { return Math.round(n * 10) / 10 }

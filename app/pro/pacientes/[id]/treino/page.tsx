@@ -30,7 +30,9 @@ export default async function TreinoPage({ params }: { params: Promise<{ id: str
       .insert({ patient_id: id, professional_id: user.id, title: 'Plano de Treino', active: true })
       .select()
       .single()
-    plan = { ...newPlan, workout_days: [] }
+    if (!newPlan) notFound()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    plan = { ...(newPlan as any), workout_days: [] }
   }
 
   if (plan?.workout_days) {
