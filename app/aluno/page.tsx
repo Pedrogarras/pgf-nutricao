@@ -84,7 +84,9 @@ export default async function AlunoPage({
 
   // Today's diary entries and water
   const todayDate = new Date().toISOString().split('T')[0]
-  const [{ data: todayDiary }, { data: todayWater }] = await Promise.all([
+  // For streak: last 60 days of diary dates
+  const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const [{ data: todayDiary }, { data: todayWater }, { data: recentDiary }] = await Promise.all([
     supabase
       .from('diary_entries')
       .select('id, total_kcal, meal_name, logged_at')
@@ -96,12 +98,35 @@ export default async function AlunoPage({
       .eq('patient_id', patient.id)
       .eq('date', todayDate)
       .maybeSingle(),
+    supabase
+      .from('diary_entries')
+      .select('logged_at')
+      .eq('patient_id', patient.id)
+      .gte('logged_at', sixtyDaysAgo)
+      .order('logged_at', { ascending: false }),
   ])
 
   const todayKcal = (todayDiary ?? []).reduce((s: number, e: { total_kcal: number | null }) => s + (e.total_kcal ?? 0), 0)
   const todayMeals = (todayDiary ?? []).length
   const waterMl = todayWater?.amount_ml ?? 0
   const waterGoal = todayWater?.goal_ml ?? 2000
+
+  // Calculate diary streak (consecutive days logged, counting from today or yesterday)
+  const loggedDates = new Set((recentDiary ?? []).map((e: { logged_at: string }) => e.logged_at))
+  let diaryStreak = 0
+  const today = new Date()
+  // If logged today, start from today; otherwise start from yesterday
+  const startOffset = loggedDates.has(todayDate) ? 0 : 1
+  for (let i = startOffset; i < 60; i++) {
+    const d = new Date(today)
+    d.setDate(d.getDate() - i)
+    const ds = d.toISOString().split('T')[0]
+    if (loggedDates.has(ds)) {
+      diaryStreak++
+    } else {
+      break
+    }
+  }
 
   const { plan: selectedPlanId } = await searchParams
 
@@ -211,14 +236,17 @@ export default async function AlunoPage({
           </div>
           <div className="grid grid-cols-3 gap-3">
             {/* Diary */}
-            <div className="flex flex-col items-center justify-center rounded-xl py-3 gap-1"
+            <div className="flex flex-col items-center justify-center rounded-xl py-3 gap-0.5"
               style={{ background: todayMeals > 0 ? 'rgba(34,197,94,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${todayMeals > 0 ? 'rgba(34,197,94,0.2)' : 'rgba(255,255,255,0.06)'}` }}>
               <span className="text-xl">{todayMeals > 0 ? '✅' : '📔'}</span>
               <span className="text-sm font-black" style={{ color: todayMeals > 0 ? '#4ade80' : 'rgba(255,255,255,0.4)' }}>
                 {todayMeals > 0 ? `${todayMeals} ref.` : '—'}
               </span>
               <span className="text-[9px] uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.25)' }}>Diário</span>
-              {todayMeals > 0 && todayKcal > 0 && (
+              {diaryStreak >= 2 && (
+                <span className="text-[10px] font-bold" style={{ color: '#fb923c' }}>🔥 {diaryStreak}d streak</span>
+              )}
+              {diaryStreak < 2 && todayMeals > 0 && todayKcal > 0 && (
                 <span className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>{Math.round(todayKcal)} kcal</span>
               )}
             </div>
