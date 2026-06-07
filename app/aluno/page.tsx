@@ -951,6 +951,10 @@ export default async function AlunoPage({
               hint: 'Descanso entre séries', dot: null,
             },
             {
+              href: '/aluno/treino/prs', icon: '🏆', label: 'Meus PRs',
+              hint: 'Recordes pessoais', dot: null,
+            },
+            {
               href: '/aluno/notificacoes', icon: '🔔', label: 'Avisos',
               hint: 'Notificações', dot: null,
             },

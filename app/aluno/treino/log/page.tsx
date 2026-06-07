@@ -362,11 +362,18 @@ export default function TreinoLogPage() {
         </div>
         <div className="flex gap-2">
           <Link
-            href="/aluno/treino/timer"
+            href="/aluno/treino/prs"
             className="text-xs font-bold px-3 py-1.5 rounded-xl"
             style={{ background: 'rgba(251,191,36,0.12)', color: '#FCD34D', border: '1px solid rgba(251,191,36,0.25)' }}
           >
-            ⏱ Timer
+            🏆 PRs
+          </Link>
+          <Link
+            href="/aluno/treino/timer"
+            className="text-xs font-bold px-3 py-1.5 rounded-xl"
+            style={{ background: 'rgba(167,139,250,0.12)', color: '#A78BFA', border: '1px solid rgba(167,139,250,0.25)' }}
+          >
+            ⏱
           </Link>
           {/* Quick log button for today without a specific day */}
           <button
