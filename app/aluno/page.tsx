@@ -233,8 +233,15 @@ export default async function AlunoPage({
             )}
 
             {plans.length === 1 && (
-              <div className="text-[10px] font-bold tracking-[2px] uppercase mt-2" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                Plano Alimentar
+              <div className="flex items-center justify-between mt-2">
+                <div className="text-[10px] font-bold tracking-[2px] uppercase" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                  Plano Alimentar
+                </div>
+                {selectedPlan.title && (
+                  <span className="text-xs font-semibold" style={{ color: 'rgba(147,197,253,0.8)' }}>
+                    {selectedPlan.title}
+                  </span>
+                )}
               </div>
             )}
 
@@ -351,6 +358,45 @@ export default async function AlunoPage({
                 <div className="text-xs leading-relaxed" style={{ color: 'rgba(226,232,248,0.7)' }}>{selectedPlan.notes}</div>
               </div>
             )}
+
+            {/* Allergy/restriction reminder from anamnesis */}
+            {selectedPlan.anamnesis && (() => {
+              const a = selectedPlan.anamnesis as { allergies?: string | null; dislikes?: string | null; supplements?: string | null }
+              if (!a.allergies && !a.dislikes && !a.supplements) return null
+              return (
+                <div className="rounded-xl px-4 py-3.5" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.18)' }}>
+                  <div className="text-[10px] font-bold uppercase tracking-wider mb-2.5" style={{ color: 'rgba(252,165,165,0.8)' }}>
+                    Suas restrições e preferências
+                  </div>
+                  <div className="space-y-1.5">
+                    {a.allergies && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] font-bold flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded" style={{ background: 'rgba(239,68,68,0.15)', color: '#fca5a5' }}>
+                          Alergias
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(226,232,248,0.65)' }}>{a.allergies}</span>
+                      </div>
+                    )}
+                    {a.dislikes && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] font-bold flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded" style={{ background: 'rgba(251,191,36,0.15)', color: '#fcd34d' }}>
+                          Evitar
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(226,232,248,0.65)' }}>{a.dislikes}</span>
+                      </div>
+                    )}
+                    {a.supplements && (
+                      <div className="flex items-start gap-2">
+                        <span className="text-[10px] font-bold flex-shrink-0 mt-0.5 px-1.5 py-0.5 rounded" style={{ background: 'rgba(147,197,253,0.15)', color: '#93C5FD' }}>
+                          Suplementação
+                        </span>
+                        <span className="text-xs" style={{ color: 'rgba(226,232,248,0.65)' }}>{a.supplements}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })()}
 
             <button onClick={() => window.print()}
               className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
