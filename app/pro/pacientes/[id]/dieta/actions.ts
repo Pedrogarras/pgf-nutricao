@@ -4,14 +4,18 @@ import { revalidatePath } from 'next/cache'
 
 export async function saveDietPlan(planId: string, data: Record<string, unknown>) {
   const supabase = await createClient()
-  const { error } = await supabase.from('diet_plans').update({ ...data, updated_at: new Date().toISOString() }).eq('id', planId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  const { error } = await supabase.from('diet_plans').update({ ...data, updated_at: new Date().toISOString() }).eq('id', planId).eq('professional_id', user.id)
   if (error) return { error: error.message }
   revalidatePath('/pro/pacientes')
 }
 
 export async function publishPlan(planId: string) {
   const supabase = await createClient()
-  await supabase.from('diet_plans').update({ published_at: new Date().toISOString() }).eq('id', planId)
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+  await supabase.from('diet_plans').update({ published_at: new Date().toISOString() }).eq('id', planId).eq('professional_id', user.id)
 }
 
 export async function addMeal(planId: string, name: string, timeStart: string, emoji: string) {
@@ -186,9 +190,11 @@ function descFromFood(grams: number, food: { portion_g: number | null; portion_d
 
 export async function applyTemplate(planId: string, template: TemplateId) {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { meals: [] }
   const tpl = DIET_TEMPLATES[template]
 
-  await supabase.from('diet_plans').update({ kcal_goal: tpl.kcal_goal }).eq('id', planId)
+  await supabase.from('diet_plans').update({ kcal_goal: tpl.kcal_goal }).eq('id', planId).eq('professional_id', user.id)
 
   const createdMeals = []
 
