@@ -222,6 +222,14 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             >
               Editar dados
             </button>
+            <a
+              href={`/pro/pacientes/${patient.id}/relatorio`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost btn-sm"
+            >
+              📄 Relatório
+            </a>
             <Link
               href={`/pro/pacientes/${patient.id}/anamnese`}
               className="btn btn-outline btn-sm"
