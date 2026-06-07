@@ -360,6 +360,137 @@ function AddSubstituteModal({ mealFood, onClose, onAdded }: {
   )
 }
 
+// ===================== EDIT SUBSTITUTE MODAL =====================
+function EditSubstituteModal({ sub, mainFood, onClose, onSaved }: {
+  sub: LocalSubstitute
+  mainFood: LocalFood
+  onClose: () => void
+  onSaved: (updated: LocalSubstitute) => void
+}) {
+  const [quantity, setQuantity] = useState(String(sub.quantity_g))
+  const [description, setDescription] = useState(sub.quantity_description || `${sub.quantity_g}g`)
+  const [loading, setLoading] = useState(false)
+
+  const qty = parseFloat(quantity) || 0
+  const macros = (() => {
+    const m = calcMacros(qty, sub.food)
+    return { kcal: r(m.kcal), protein: r(m.protein), carbs: r(m.carbs), fat: r(m.fat) }
+  })()
+
+  const mainKcal = r(calcMacros(mainFood.quantity_g, mainFood).kcal)
+  const diff = Math.abs(macros.kcal - mainKcal)
+  const kcalMatch = diff < 30
+
+  function handleMeasureSelect(grams: number, desc: string) {
+    setQuantity(String(grams))
+    setDescription(desc)
+  }
+
+  async function handleSave() {
+    if (!quantity || qty <= 0) return
+    setLoading(true)
+    const desc = description || `${qty}g`
+    await fetch('/api/substitutes', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: sub.id, quantity_g: qty, quantity_description: desc }),
+    })
+    onSaved({ ...sub, quantity_g: qty, quantity_description: desc })
+    setLoading(false)
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b">
+          <div>
+            <h3 className="font-bold text-gray-900">Editar substituto</h3>
+            <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              <span className="font-medium text-amber-600">OU</span>
+              <span>{sub.food.name}</span>
+              {sourceBadge(sub.food.source, sub.food.source_label)}
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">✕</button>
+        </div>
+
+        <div className="p-5 space-y-4">
+          {/* Referência: alimento principal */}
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-100 text-xs text-gray-500">
+            <span className="font-semibold text-gray-700">Alimento principal: </span>
+            {mainFood.name} · {mainFood.quantity_g ?? '?'}g · {mainKcal} kcal
+          </div>
+
+          {/* Referência base do substituto */}
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-100">
+            <div className="text-[10px] font-semibold text-amber-600 uppercase tracking-wide mb-1">Base do substituto</div>
+            <div className="text-sm font-semibold text-amber-700">
+              {sub.food.portion_g}g = {sub.food.portion_description ?? `${sub.food.portion_g}g`}
+            </div>
+            <div className="text-xs text-gray-400 mt-0.5">
+              {r(sub.food.kcal)} kcal · P {r(sub.food.protein_g)}g · C {r(sub.food.carbs_g)}g · G {r(sub.food.fat_g)}g
+            </div>
+          </div>
+
+          <MeasureSelect foodId={sub.food.id} onMeasureSelect={handleMeasureSelect} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="form-label">Gramatura (g)</label>
+              <input
+                type="number" step="0.5" min="0.5" value={quantity}
+                onChange={e => {
+                  setQuantity(e.target.value)
+                  const q = parseFloat(e.target.value)
+                  if (!isNaN(q) && q > 0) setDescription(computeDesc(q, sub.food))
+                }}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label className="form-label">Medida caseira</label>
+              <input
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="form-input"
+                placeholder="ex: 2 col. sopa (30g)"
+              />
+            </div>
+          </div>
+
+          {/* Preview macros com indicador de equivalência kcal */}
+          <div className="grid grid-cols-4 gap-2 text-center">
+            {[
+              { label: 'Kcal', value: macros.kcal, color: kcalMatch ? 'text-emerald-600' : 'text-orange-500' },
+              { label: 'Prot', value: `${macros.protein}g`, color: 'text-blue-600' },
+              { label: 'Carb', value: `${macros.carbs}g`, color: 'text-amber-600' },
+              { label: 'Gord', value: `${macros.fat}g`, color: 'text-red-600' },
+            ].map(m => (
+              <div key={m.label} className="bg-gray-50 rounded-lg p-2">
+                <div className={`text-base font-black ${m.color}`}>{m.value}</div>
+                <div className="text-[10px] text-gray-400">{m.label}</div>
+              </div>
+            ))}
+          </div>
+          {!kcalMatch && qty > 0 && (
+            <p className="text-[11px] text-orange-500">
+              ⚠️ Diferença de {r(diff)} kcal em relação ao alimento principal ({mainKcal} kcal).
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 px-5 pb-5">
+          <button onClick={onClose} className="btn btn-ghost">Cancelar</button>
+          <button onClick={handleSave} disabled={!quantity || qty <= 0 || loading} className="btn btn-primary">
+            {loading ? 'Salvando...' : '✓ Salvar substituto'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ===================== EDIT FOOD MODAL =====================
 function EditFoodModal({ mf, onClose, onSaved }: {
   mf: LocalMealFood
@@ -475,16 +606,18 @@ function EditFoodModal({ mf, onClose, onSaved }: {
 }
 
 // ===================== MEAL FOOD ROW =====================
-function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onFullUpdate }: {
+function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSubUpdated, onFullUpdate }: {
   mf: LocalMealFood
   onQtyChange: (id: string, qty: number) => void
   onRemove: (id: string) => void
   onSubAdded: (mfId: string, sub: LocalSubstitute) => void
   onSubRemoved: (mfId: string, subId: string) => void
+  onSubUpdated: (mfId: string, updatedSub: LocalSubstitute) => void
   onFullUpdate: (updatedMf: LocalMealFood) => void
 }) {
   const [addSubOpen, setAddSubOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
+  const [editingSub, setEditingSub] = useState<LocalSubstitute | null>(null)
   const m = calcMacros(mf.quantity_g, mf.food)
 
   return (
@@ -529,7 +662,7 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onFu
         return (
           <div key={sub.id} className="grid items-center py-1.5 pl-4 border-b border-gray-50/80 bg-gray-50/30"
             style={{ gridTemplateColumns: '1fr 90px 60px 60px 60px 55px 80px' }}>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-wrap">
               <span className="text-[10px] font-bold text-amber-500 mr-1">OU</span>
               <span className="text-xs text-gray-600">{sub.food.name}</span>
               {sourceBadge(sub.food.source, sub.food.source_label)}
@@ -540,7 +673,12 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onFu
             <span className="text-center text-xs text-amber-400">{r(sm.carbs)}g</span>
             <span className="text-center text-xs text-red-400">{r(sm.fat)}g</span>
             <span className="text-center text-xs text-gray-500">{r(sm.kcal)}</span>
-            <div className="flex justify-center">
+            <div className="flex items-center justify-center gap-1">
+              <button
+                onClick={() => setEditingSub(sub)}
+                title="Editar substituto"
+                className="text-gray-300 hover:text-amber-500 transition-colors text-sm px-1"
+              >✏️</button>
               <button onClick={async () => { await removeSubstitute(sub.id); onSubRemoved(mf.id, sub.id) }}
                 className="text-gray-200 hover:text-red-400 text-sm transition-colors">✕</button>
             </div>
@@ -561,6 +699,15 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onFu
           mf={mf}
           onClose={() => setEditOpen(false)}
           onSaved={updatedMf => { onFullUpdate(updatedMf); setEditOpen(false) }}
+        />
+      )}
+
+      {editingSub && (
+        <EditSubstituteModal
+          sub={editingSub}
+          mainFood={mf.food}
+          onClose={() => setEditingSub(null)}
+          onSaved={updated => { onSubUpdated(mf.id, updated); setEditingSub(null) }}
         />
       )}
     </>
@@ -665,6 +812,17 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
     })
   }
 
+  function handleSubUpdated(mfId: string, updatedSub: LocalSubstitute) {
+    onUpdate({
+      ...meal,
+      meal_foods: meal.meal_foods.map(mf =>
+        mf.id === mfId
+          ? { ...mf, substitutes: (mf.substitutes ?? []).map(s => s.id === updatedSub.id ? updatedSub : s) }
+          : mf
+      )
+    })
+  }
+
   async function handleRemoveMeal() {
     if (!confirm(`Remover refeição "${meal.name}"?`)) return
     await removeMeal(meal.id)
@@ -726,6 +884,7 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal }: {
               onRemove={handleRemoveFood}
               onSubAdded={handleSubAdded}
               onSubRemoved={handleSubRemoved}
+              onSubUpdated={handleSubUpdated}
               onFullUpdate={handleFullUpdate}
             />
           ))}

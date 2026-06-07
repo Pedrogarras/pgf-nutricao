@@ -35,10 +35,10 @@ export default async function AlunoPage({
     )
   }
 
-  // Carrega todos os planos ativos e publicados
+  // Carrega todos os planos ativos e publicados (inclui substitutos)
   const { data: activePlans } = await supabase
     .from('diet_plans')
-    .select(`*, meals(*, meal_foods(*, food:foods(*)))`)
+    .select(`*, meals(*, meal_foods(*, food:foods(*), substitutes:meal_food_substitutes(*, food:foods(*))))`)
     .eq('patient_id', patient.id)
     .eq('active', true)
     .not('published_at', 'is', null)
@@ -220,15 +220,46 @@ export default async function AlunoPage({
                   {/* Food list */}
                   {meal.meal_foods?.length > 0 && (
                     <div style={{ borderTop: '1px solid var(--dark-border)' }}>
-                      {meal.meal_foods.map((mf) => (
-                        <div key={mf.id} className="flex items-center justify-between px-4 py-2.5"
-                          style={{ borderBottom: '1px solid var(--dark-border)' }}>
-                          <span className="text-sm font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>
-                            {mf.food.name}
-                          </span>
-                          <span className="text-xs ml-3 text-right flex-shrink-0" style={{ color: 'rgba(197,205,240,0.55)' }}>
-                            {mf.quantity_description ?? `${mf.quantity_g}g`}
-                          </span>
+                      {meal.meal_foods.map((mf: {
+                        id: string
+                        food: { name: string; kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number }
+                        quantity_g: number
+                        quantity_description: string | null
+                        substitutes?: { id: string; food: { name: string }; quantity_g: number; quantity_description: string | null }[]
+                      }) => (
+                        <div key={mf.id}>
+                          {/* Alimento principal */}
+                          <div className="flex items-center justify-between px-4 py-2.5"
+                            style={{ borderBottom: mf.substitutes?.length ? undefined : '1px solid var(--dark-border)' }}>
+                            <span className="text-sm font-medium" style={{ color: 'rgba(226,232,248,0.9)' }}>
+                              {mf.food.name}
+                            </span>
+                            <span className="text-xs ml-3 text-right flex-shrink-0" style={{ color: 'rgba(197,205,240,0.55)' }}>
+                              {mf.quantity_description ?? `${mf.quantity_g}g`}
+                            </span>
+                          </div>
+                          {/* Substitutos */}
+                          {mf.substitutes?.map((sub, si) => (
+                            <div key={sub.id}
+                              className="flex items-center justify-between pl-6 pr-4 py-2"
+                              style={{
+                                borderBottom: si === (mf.substitutes!.length - 1) ? '1px solid var(--dark-border)' : '1px solid rgba(37,99,235,0.08)',
+                                background: 'rgba(251,191,36,0.04)',
+                              }}>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[10px] font-bold flex-shrink-0 px-1.5 py-0.5 rounded"
+                                  style={{ background: 'rgba(251,191,36,0.15)', color: '#FCD34D' }}>
+                                  OU
+                                </span>
+                                <span className="text-xs truncate" style={{ color: 'rgba(197,205,240,0.75)' }}>
+                                  {sub.food.name}
+                                </span>
+                              </div>
+                              <span className="text-xs ml-2 flex-shrink-0" style={{ color: 'rgba(197,205,240,0.45)' }}>
+                                {sub.quantity_description ?? `${sub.quantity_g}g`}
+                              </span>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
