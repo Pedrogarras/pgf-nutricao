@@ -219,10 +219,19 @@ export default async function AlunoPage({
               {patient.goal ?? 'Plano personalizado'}
             </div>
           </div>
-          <div className="text-right">
+          <div className="text-right flex flex-col items-end gap-2">
+            <Link href="/aluno/notificacoes"
+              className="w-9 h-9 rounded-xl flex items-center justify-center relative"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="text-base">🔔</span>
+              {patient.public_message && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full"
+                  style={{ background: '#F59E0B', border: '2px solid #06060A' }} />
+              )}
+            </Link>
             <div className="font-serif italic font-black text-white tracking-tighter" style={{ fontSize: '1.5rem' }}>PGF</div>
-            <div className="text-[9px] tracking-[2px] uppercase mt-0.5" style={{ color: 'rgba(255,255,255,0.22)' }}>Nutricionista</div>
-            <form action={logout} className="mt-3">
+            <div className="text-[9px] tracking-[2px] uppercase" style={{ color: 'rgba(255,255,255,0.22)' }}>Nutricionista</div>
+            <form action={logout}>
               <button type="submit" className="text-[10px] tracking-wider uppercase"
                 style={{ color: 'rgba(255,255,255,0.25)' }}>
                 Sair
@@ -928,6 +937,10 @@ export default async function AlunoPage({
             {
               href: '/aluno/conquistas', icon: '🏅', label: 'Conquistas',
               hint: 'Badges e XP', dot: null,
+            },
+            {
+              href: '/aluno/notificacoes', icon: '🔔', label: 'Avisos',
+              hint: 'Notificações', dot: null,
             },
           ]
           const dotColors: Record<string, string> = {
