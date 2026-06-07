@@ -394,7 +394,8 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
         {/* Navigation grid */}
         <div className="grid grid-cols-5 gap-3 mb-10">
           {[
-            { href: `/pro/pacientes/${patient.id}/anamnese`,    icon: '📋', label: 'Anamnese',   desc: 'Histórico clínico' },
+            { href: `/pro/pacientes/${patient.id}/historico`,    icon: '🗓️', label: 'Histórico',  desc: 'Timeline clínica' },
+            { href: `/pro/pacientes/${patient.id}/anamnese`,    icon: '📋', label: 'Anamnese',   desc: 'Dados clínicos' },
             { href: `/pro/pacientes/${patient.id}/metas`,       icon: '🎯', label: 'Metas',      desc: 'Objetivos e progresso' },
             { href: `/pro/pacientes/${patient.id}/medidas`,     icon: '📏', label: 'Medidas',    desc: 'Avaliações físicas' },
             { href: `/pro/pacientes/${patient.id}/fotos`,       icon: '📸', label: 'Fotos',      desc: 'Evolução visual' },
