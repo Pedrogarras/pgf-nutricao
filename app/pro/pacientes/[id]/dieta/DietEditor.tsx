@@ -60,17 +60,19 @@ function FoodSearch({ onSelect, placeholder }: { onSelect: (food: LocalFood) => 
   const [results, setResults] = useState<LocalFood[]>([])
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
+  const [searched, setSearched] = useState(false)
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const search = useCallback((q: string) => {
     setQuery(q)
     if (timeout.current) clearTimeout(timeout.current)
-    if (q.length < 2) { setResults([]); setOpen(false); return }
+    if (q.length < 2) { setResults([]); setOpen(false); setSearched(false); return }
     timeout.current = setTimeout(async () => {
       setLoading(true)
       const res = await fetch(`/api/foods?q=${encodeURIComponent(q)}`)
       const data = await res.json()
       setResults(data.foods ?? [])
+      setSearched(true)
       setOpen(true)
       setLoading(false)
     }, 300)
@@ -81,16 +83,18 @@ function FoodSearch({ onSelect, placeholder }: { onSelect: (food: LocalFood) => 
       <input
         value={query}
         onChange={e => search(e.target.value)}
-        onFocus={() => results.length > 0 && setOpen(true)}
+        onFocus={() => (results.length > 0 || searched) && setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder ?? 'Buscar alimento (ex: frango, arroz, ovo...)'}
         className="form-input text-sm"
       />
       {loading && <div className="absolute right-3 top-2.5 text-gray-400 text-xs">Buscando...</div>}
-      {open && results.length > 0 && (
+      {open && (results.length > 0 || (!loading && searched)) && (
         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto">
-          {results.map(food => (
+          {results.length > 0 ? results.map(food => (
             <button key={food.id} type="button"
-              onClick={() => { onSelect(food); setQuery(''); setResults([]); setOpen(false) }}
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => { onSelect(food); setQuery(''); setResults([]); setOpen(false); setSearched(false) }}
               className="w-full text-left px-4 py-2.5 hover:bg-pgf-50 border-b border-gray-50 last:border-0 transition-colors"
             >
               <div className="flex items-center gap-1">
@@ -102,7 +106,12 @@ function FoodSearch({ onSelect, placeholder }: { onSelect: (food: LocalFood) => 
                 <span className="ml-2 text-gray-300">(base {food.portion_g}g)</span>
               </div>
             </button>
-          ))}
+          )) : (
+            <div className="px-4 py-3 text-sm text-gray-400">
+              Nenhum alimento encontrado para &ldquo;{query}&rdquo;.{' '}
+              <a href="/pro/alimentos" target="_blank" rel="noopener" className="text-pgf-600 underline">Adicionar ao banco</a>
+            </div>
+          )}
         </div>
       )}
     </div>
