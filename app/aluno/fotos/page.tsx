@@ -215,6 +215,15 @@ export default function AlunoFotosPage() {
             {photos.length > 0 ? `${photos.length} foto${photos.length !== 1 ? 's' : ''} registradas` : 'Registre sua evolução'}
           </p>
         </div>
+        {photos.length >= 2 && (
+          <Link
+            href="/aluno/fotos/comparar"
+            className="px-3 py-2 rounded-xl text-xs font-bold transition-all"
+            style={{ background: 'rgba(37,99,235,0.15)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
+          >
+            📊 Comparar
+          </Link>
+        )}
         <button
           onClick={() => setUploadOpen(true)}
           className="px-3 py-2 rounded-xl text-xs font-bold transition-all"
