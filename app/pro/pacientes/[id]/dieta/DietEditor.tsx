@@ -1332,21 +1332,10 @@ export default function DietEditor({ patient, plan, professionalId }: {
 // ===================== METAS TAB =====================
 function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient: Patient; planId: string; onSaved: (msg: string) => void }) {
   const [saving, setSaving] = useState(false)
-
-  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setSaving(true)
-    const fd = new FormData(e.currentTarget)
-    await saveDietPlan(planId, {
-      kcal_goal: Number(fd.get('kcal_goal')),
-      protein_goal_g: Number(fd.get('protein_goal_g')),
-      carbs_goal_g: Number(fd.get('carbs_goal_g')),
-      fat_goal_g: Number(fd.get('fat_goal_g')),
-      notes: fd.get('notes') as string,
-    })
-    setSaving(false)
-    onSaved('Metas salvas.')
-  }
+  const [kcal, setKcal] = useState(String(plan.kcal_goal ?? ''))
+  const [prot, setProt] = useState(String(plan.protein_goal_g ?? ''))
+  const [carb, setCarb] = useState(String(plan.carbs_goal_g ?? ''))
+  const [fat, setFat] = useState(String(plan.fat_goal_g ?? ''))
 
   const w = patient.weight_kg ?? 0, h = patient.height_cm ?? 0
   const age = patient.date_of_birth
@@ -1361,25 +1350,93 @@ function MetasTab({ plan, patient, planId, onSaved }: { plan: LocalPlan; patient
   }
   const get = Math.round(tmb * (fatores[patient.activity_level ?? 'levemente_ativo'] ?? 1.375))
 
+  // Preset: auto-fill macros from kcal target and a protein ratio
+  function applyPreset(kcalTarget: number, protRatio: number, fatPct: number) {
+    const protG = Math.round(protRatio * w)
+    const fatG = Math.round((kcalTarget * fatPct) / 9)
+    const carbG = Math.round((kcalTarget - protG * 4 - fatG * 9) / 4)
+    setKcal(String(kcalTarget))
+    setProt(String(protG))
+    setFat(String(fatG))
+    setCarb(String(Math.max(0, carbG)))
+  }
+
+  const presets = [
+    { label: 'Déficit leve', desc: '-15% GET', kcal: Math.round(get * 0.85), protRatio: 1.8, fatPct: 0.25 },
+    { label: 'Déficit moderado', desc: '-25% GET', kcal: Math.round(get * 0.75), protRatio: 2.0, fatPct: 0.25 },
+    { label: 'Manutenção', desc: 'GET', kcal: get, protRatio: 1.6, fatPct: 0.25 },
+    { label: 'Ganho de massa', desc: '+10% GET', kcal: Math.round(get * 1.10), protRatio: 1.8, fatPct: 0.25 },
+  ]
+
+  async function handleSave(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setSaving(true)
+    const fd = new FormData(e.currentTarget)
+    await saveDietPlan(planId, {
+      kcal_goal: Number(kcal) || null,
+      protein_goal_g: Number(prot) || null,
+      carbs_goal_g: Number(carb) || null,
+      fat_goal_g: Number(fat) || null,
+      notes: fd.get('notes') as string,
+    })
+    setSaving(false)
+    onSaved('Metas salvas.')
+  }
+
   return (
     <form onSubmit={handleSave}>
       <div className="grid grid-cols-2 gap-6">
         <div className="card">
           <div className="card-header"><span className="card-title">Metas Calóricas</span></div>
           <div className="card-body space-y-4">
+            {/* Calculated reference values */}
             <div className="grid grid-cols-2 gap-3 p-3 bg-pgf-50 rounded-lg text-sm">
               <div><div className="text-gray-400 text-xs">TMB estimada</div><div className="font-black text-pgf-600">{Math.round(tmb)} kcal</div></div>
               <div><div className="text-gray-400 text-xs">GET (com atividade)</div><div className="font-black text-pgf-600">{get} kcal</div></div>
             </div>
+
+            {/* Quick presets */}
+            {w > 0 && (
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wide text-gray-400 mb-2">Atalhos de meta</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {presets.map(p => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => applyPreset(p.kcal, p.protRatio, p.fatPct)}
+                      className="text-left border border-gray-200 rounded-lg px-3 py-2 hover:border-pgf-300 hover:bg-pgf-50 transition-all"
+                    >
+                      <div className="text-xs font-bold text-gray-700">{p.label}</div>
+                      <div className="text-[10px] text-gray-400">{p.desc} · {p.kcal} kcal</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-gray-400 mt-1.5">
+                  Prot: 1.6–2.0g/kg · Gord: 25% kcal · restante em carboidrato
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="form-label">Meta calórica diária (kcal)</label>
-              <input name="kcal_goal" type="number" defaultValue={plan.kcal_goal ?? ''} className="form-input" placeholder={String(get)} />
+              <input name="kcal_goal" type="number" value={kcal} onChange={e => setKcal(e.target.value)} className="form-input" placeholder={String(get)} />
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div><label className="form-label">Proteína (g)</label><input name="protein_goal_g" type="number" defaultValue={plan.protein_goal_g ?? ''} className="form-input" /></div>
-              <div><label className="form-label">Carboidrato (g)</label><input name="carbs_goal_g" type="number" defaultValue={plan.carbs_goal_g ?? ''} className="form-input" /></div>
-              <div><label className="form-label">Gordura (g)</label><input name="fat_goal_g" type="number" defaultValue={plan.fat_goal_g ?? ''} className="form-input" /></div>
+              <div><label className="form-label">Proteína (g)</label><input name="protein_goal_g" type="number" value={prot} onChange={e => setProt(e.target.value)} className="form-input" /></div>
+              <div><label className="form-label">Carboidrato (g)</label><input name="carbs_goal_g" type="number" value={carb} onChange={e => setCarb(e.target.value)} className="form-input" /></div>
+              <div><label className="form-label">Gordura (g)</label><input name="fat_goal_g" type="number" value={fat} onChange={e => setFat(e.target.value)} className="form-input" /></div>
             </div>
+            {/* Live kcal check */}
+            {prot && carb && fat && (
+              <div className="text-[11px] px-3 py-2 rounded-lg bg-gray-50 border border-gray-100 text-gray-500">
+                Calculado: {Number(prot) * 4 + Number(carb) * 4 + Number(fat) * 9} kcal
+                {kcal && Math.abs((Number(prot) * 4 + Number(carb) * 4 + Number(fat) * 9) - Number(kcal)) > 30
+                  ? <span className="text-orange-500 ml-1">(difere {Math.abs((Number(prot) * 4 + Number(carb) * 4 + Number(fat) * 9) - Number(kcal))} kcal da meta)</span>
+                  : <span className="text-emerald-600 ml-1">— consistente</span>
+                }
+              </div>
+            )}
             <div>
               <label className="form-label">Orientações do plano</label>
               <textarea name="notes" defaultValue={plan.notes ?? ''} className="form-textarea" rows={3} placeholder="Orientações gerais, restrições..." />
