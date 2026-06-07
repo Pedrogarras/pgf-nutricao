@@ -177,12 +177,21 @@ type Patient = {
   public_message?: string | null
 }
 
+interface ActivitySummary {
+  lastDiary: string | null
+  lastConsultation: string | null
+  lastRecord: string | null
+  lastWeight: number | null
+  diaryCount30d: number
+}
+
 interface Props {
   patient: Patient
   dietPlans: DietPlan[]
+  activitySummary?: ActivitySummary
 }
 
-export default function PatientHub({ patient, dietPlans: initialPlans }: Props) {
+export default function PatientHub({ patient, dietPlans: initialPlans, activitySummary }: Props) {
   const [plans, setPlans] = useState(initialPlans)
   const [showNewPlan, setShowNewPlan] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -506,6 +515,51 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             </div>
           ) : null}
         </div>
+
+        {/* Activity summary */}
+        {activitySummary && (() => {
+          function daysAgo(dateStr: string | null): string {
+            if (!dateStr) return '—'
+            const d = new Date(dateStr.length === 10 ? dateStr + 'T12:00' : dateStr)
+            const days = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24))
+            if (days === 0) return 'Hoje'
+            if (days === 1) return 'Ontem'
+            return `${days}d atrás`
+          }
+          const diaryPct = Math.round((activitySummary.diaryCount30d / 30) * 100)
+          const diaryColor = diaryPct >= 70 ? '#4ade80' : diaryPct >= 40 ? '#fbbf24' : '#f87171'
+          return (
+            <div className="grid grid-cols-4 gap-3 mb-8">
+              {[
+                { icon: '📔', label: 'Diário', value: daysAgo(activitySummary.lastDiary), sub: activitySummary.lastDiary ? 'último registro' : 'sem registros', warn: !activitySummary.lastDiary },
+                { icon: '📏', label: 'Medição', value: daysAgo(activitySummary.lastRecord), sub: activitySummary.lastWeight ? `${activitySummary.lastWeight} kg` : 'sem dados', warn: !activitySummary.lastRecord },
+                { icon: '📅', label: 'Consulta', value: daysAgo(activitySummary.lastConsultation), sub: 'última realizada', warn: !activitySummary.lastConsultation },
+                {
+                  icon: '📊',
+                  label: 'Log 30 dias',
+                  value: `${activitySummary.diaryCount30d} dias`,
+                  sub: `${diaryPct}% do período`,
+                  warn: diaryPct < 40,
+                  color: diaryColor,
+                },
+              ].map(item => (
+                <div key={item.label}
+                  className="rounded-xl p-3.5"
+                  style={{
+                    background: item.warn ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${item.warn ? 'rgba(239,68,68,0.18)' : 'var(--dark-border)'}`,
+                  }}>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-sm">{item.icon}</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>{item.label}</span>
+                  </div>
+                  <div className="text-sm font-black" style={{ color: (item as {color?: string}).color ?? 'white' }}>{item.value}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>{item.sub}</div>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
 
         {/* Section header */}
         <div className="flex items-end justify-between mb-4">

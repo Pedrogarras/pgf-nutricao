@@ -17,11 +17,52 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
 
   if (!patient) notFound()
 
-  const { data: dietPlans } = await supabase
-    .from('diet_plans')
-    .select('id, title, active, kcal_goal, created_at, published_at')
-    .eq('patient_id', id)
-    .order('created_at', { ascending: false })
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-  return <PatientHub patient={patient} dietPlans={dietPlans ?? []} />
+  const [
+    { data: dietPlans },
+    { data: lastDiary },
+    { data: lastConsultation },
+    { data: lastRecord },
+    { count: diaryCount30d },
+  ] = await Promise.all([
+    supabase.from('diet_plans')
+      .select('id, title, active, kcal_goal, created_at, published_at')
+      .eq('patient_id', id)
+      .order('created_at', { ascending: false }),
+    supabase.from('diary_entries')
+      .select('logged_at, total_kcal')
+      .eq('patient_id', id)
+      .order('logged_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('consultations')
+      .select('scheduled_at, type, status')
+      .eq('patient_id', id)
+      .eq('professional_id', user.id)
+      .order('scheduled_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('anthropometric_records')
+      .select('measured_at, weight_kg')
+      .eq('patient_id', id)
+      .eq('professional_id', user.id)
+      .order('measured_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from('diary_entries')
+      .select('*', { count: 'exact', head: true })
+      .eq('patient_id', id)
+      .gte('logged_at', thirtyDaysAgo),
+  ])
+
+  const activitySummary = {
+    lastDiary: lastDiary?.logged_at ?? null,
+    lastConsultation: lastConsultation?.scheduled_at ?? null,
+    lastRecord: lastRecord?.measured_at ?? null,
+    lastWeight: lastRecord?.weight_kg ?? null,
+    diaryCount30d: diaryCount30d ?? 0,
+  }
+
+  return <PatientHub patient={patient} dietPlans={dietPlans ?? []} activitySummary={activitySummary} />
 }
