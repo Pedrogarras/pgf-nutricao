@@ -15,6 +15,30 @@ export default async function PacientesPage() {
     .eq('active', true)
     .order('full_name')
 
+  // Fetch the most recent check-in for each patient (latest measured_at + weight)
+  const patientIds = (patients ?? []).map(p => p.id)
+  let latestCheckIns: Record<string, { measured_at: string; weight_kg: number | null; adherence_pct: number | null }> = {}
+  if (patientIds.length > 0) {
+    const { data: checkIns } = await supabase
+      .from('anthropometric_records')
+      .select('patient_id, measured_at, weight_kg, adherence_pct')
+      .in('patient_id', patientIds)
+      .eq('professional_id', user.id)
+      .order('measured_at', { ascending: false })
+    // Keep only the latest per patient
+    for (const ci of checkIns ?? []) {
+      if (!latestCheckIns[ci.patient_id]) {
+        latestCheckIns[ci.patient_id] = { measured_at: ci.measured_at, weight_kg: ci.weight_kg, adherence_pct: ci.adherence_pct }
+      }
+    }
+  }
+
+  // Merge into patients
+  const enrichedPatients = (patients ?? []).map(p => ({
+    ...p,
+    lastCheckIn: latestCheckIns[p.id] ?? null,
+  }))
+
   return (
     <div>
       <div
@@ -29,7 +53,7 @@ export default async function PacientesPage() {
       </div>
 
       <div className="p-8">
-        <PatientList patients={patients ?? []} />
+        <PatientList patients={enrichedPatients} />
       </div>
     </div>
   )

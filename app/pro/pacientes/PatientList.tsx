@@ -6,6 +6,7 @@ type Patient = {
   id: string; full_name: string; email: string | null; phone: string | null
   goal: string | null; weight_kg: number | null; height_cm: number | null
   date_of_birth: string | null; gender: string | null; auth_user_id: string | null
+  lastCheckIn?: { measured_at: string; weight_kg: number | null; adherence_pct: number | null } | null
 }
 
 export default function PatientList({ patients }: { patients: Patient[] }) {
@@ -32,7 +33,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
         <table className="w-full">
           <thead>
             <tr>
-              {['Paciente', 'Objetivo', 'Dados', 'Acesso', 'Ações'].map(h => (
+              {['Paciente', 'Objetivo', 'Dados', 'Último check-in', 'Acesso', 'Ações'].map(h => (
                 <th key={h} className="px-5 py-3 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 border-b">
                   {h}
                 </th>
@@ -93,6 +94,31 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
                     })()}
                   </td>
                   <td className="px-5 py-3.5">
+                    {p.lastCheckIn ? (() => {
+                      const ci = p.lastCheckIn!
+                      const daysSince = Math.floor((Date.now() - new Date(ci.measured_at + 'T12:00').getTime()) / (1000 * 60 * 60 * 24))
+                      const stale = daysSince > 30
+                      return (
+                        <div>
+                          <div className="text-xs font-medium" style={{ color: stale ? '#f87171' : '#4ade80' }}>
+                            {new Date(ci.measured_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                            <span className="text-gray-400 font-normal ml-1">({daysSince}d atrás)</span>
+                          </div>
+                          <div className="text-xs text-gray-400 mt-0.5 flex items-center gap-2">
+                            {ci.weight_kg != null && <span>{ci.weight_kg} kg</span>}
+                            {ci.adherence_pct != null && (
+                              <span className={`font-medium ${ci.adherence_pct >= 80 ? 'text-green-500' : ci.adherence_pct >= 50 ? 'text-blue-400' : 'text-red-400'}`}>
+                                {ci.adherence_pct}% adesão
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })() : (
+                      <span className="text-xs text-gray-300">Sem avaliação</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
                     {p.auth_user_id ? (
                       <div className="flex items-center gap-1.5">
                         <div className="w-2 h-2 rounded-full bg-green-400" style={{ boxShadow: '0 0 4px rgba(74,222,128,0.6)' }} />
@@ -115,7 +141,7 @@ export default function PatientList({ patients }: { patients: Patient[] }) {
               )
             })}
             {!filtered.length && (
-              <tr><td colSpan={5} className="px-5 py-10 text-center text-gray-400 text-sm">
+              <tr><td colSpan={6} className="px-5 py-10 text-center text-gray-400 text-sm">
                 {search ? `Nenhum paciente encontrado para "${search}".` : (
                   <>
                     <div className="font-semibold text-gray-600 mb-1">Nenhum paciente cadastrado</div>
