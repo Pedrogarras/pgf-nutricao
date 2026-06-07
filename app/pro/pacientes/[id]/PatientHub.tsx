@@ -237,6 +237,12 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               Anamnese
             </Link>
             <Link
+              href={`/pro/pacientes/${patient.id}/metas`}
+              className="btn btn-outline btn-sm"
+            >
+              🎯 Metas
+            </Link>
+            <Link
               href={`/pro/pacientes/${patient.id}/medidas`}
               className="btn btn-outline btn-sm"
             >
