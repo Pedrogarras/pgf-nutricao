@@ -223,6 +223,12 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
               Editar dados
             </button>
             <Link
+              href={`/pro/pacientes/${patient.id}/medidas`}
+              className="btn btn-outline btn-sm"
+            >
+              Medidas
+            </Link>
+            <Link
               href={`/pro/pacientes/${patient.id}/treino`}
               className="btn btn-outline btn-sm"
             >
