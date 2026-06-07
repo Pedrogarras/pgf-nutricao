@@ -340,6 +340,28 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
   })
   const [consultaSaving, setConsultaSaving] = useState(false)
   const [consultaSuccess, setConsultaSuccess] = useState(false)
+  const [consultaResumo, setConsultaResumo] = useState('')
+  const [resumoCopied, setResumoCopied] = useState(false)
+
+  function buildConsultaResumo(form: typeof consultaForm): string {
+    const firstName = patient.full_name.split(' ')[0]
+    const dateFormatted = new Date(form.date + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })
+    const typeLabel = form.type === 'presencial' ? 'presencial' : form.type === 'online' ? 'online' : 'por telefone'
+    let msg = `Olá, ${firstName}! 😊\n\nPassando o resumo da nossa consulta ${typeLabel} de hoje (${dateFormatted}):\n\n`
+    if (form.weight_kg) {
+      msg += `⚖️ *Peso:* ${form.weight_kg} kg\n`
+    }
+    if (form.adherence_pct) {
+      const pct = parseInt(form.adherence_pct)
+      const adherenceEmoji = pct >= 80 ? '🏆' : pct >= 60 ? '👍' : pct >= 40 ? '💪' : '⚠️'
+      msg += `${adherenceEmoji} *Aderência ao plano:* ${form.adherence_pct}%\n`
+    }
+    if (form.notes && form.notes.trim()) {
+      msg += `\n📋 *Anotações:*\n${form.notes.trim()}\n`
+    }
+    msg += `\nQualquer dúvida estou à disposição! 🌱\n\n_Pedro Garrastazu Frey – Nutricionista_`
+    return msg
+  }
 
   async function handleSaveConsulta() {
     setConsultaSaving(true)
@@ -370,14 +392,29 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
         }),
       })
     }
+    const resumo = buildConsultaResumo(consultaForm)
+    setConsultaResumo(resumo)
+    setResumoCopied(false)
     setConsultaSaving(false)
     setConsultaSuccess(true)
-    setTimeout(() => {
-      setConsultaSuccess(false)
-      setConsultaOpen(false)
-      // Reset form for next time
-      setConsultaForm(prev => ({ ...prev, notes: '', weight_kg: '', adherence_pct: '' }))
-    }, 1500)
+  }
+
+  function closeConsulta() {
+    setConsultaSuccess(false)
+    setConsultaOpen(false)
+    setConsultaResumo('')
+    setResumoCopied(false)
+    setConsultaForm(prev => ({ ...prev, notes: '', weight_kg: '', adherence_pct: '' }))
+  }
+
+  async function copyResumo() {
+    try {
+      await navigator.clipboard.writeText(consultaResumo)
+      setResumoCopied(true)
+      setTimeout(() => setResumoCopied(false), 2500)
+    } catch {
+      // fallback
+    }
   }
 
   const initials = patient.full_name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -1055,7 +1092,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: 'rgba(0,0,0,0.82)' }}
-          onClick={e => e.target === e.currentTarget && setConsultaOpen(false)}
+          onClick={e => e.target === e.currentTarget && closeConsulta()}
         >
           <div
             className="relative rounded-2xl p-7 w-full max-w-md shadow-2xl"
@@ -1065,10 +1102,54 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
               style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
 
             {consultaSuccess ? (
-              <div className="text-center py-6">
-                <div className="text-4xl mb-3">✅</div>
-                <div className="text-white font-bold text-lg">Consulta registrada!</div>
-                <div className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.4)' }}>Dados salvos com sucesso</div>
+              <div>
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <div className="font-black text-white text-base">Consulta registrada!</div>
+                    <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                      {new Date(consultaForm.date + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* WhatsApp summary */}
+                <div className="rounded-xl p-4 mb-4" style={{ background: 'rgba(37,211,102,0.07)', border: '1px solid rgba(37,211,102,0.2)' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(74,222,128,0.7)' }}>
+                      Resumo para WhatsApp
+                    </span>
+                    <button onClick={copyResumo}
+                      className="text-[10px] font-bold px-2 py-1 rounded-lg transition-all"
+                      style={{ background: resumoCopied ? 'rgba(74,222,128,0.2)' : 'rgba(255,255,255,0.07)', color: resumoCopied ? '#4ade80' : 'rgba(255,255,255,0.5)' }}>
+                      {resumoCopied ? '✓ Copiado!' : '📋 Copiar'}
+                    </button>
+                  </div>
+                  <textarea
+                    value={consultaResumo}
+                    onChange={e => setConsultaResumo(e.target.value)}
+                    rows={8}
+                    className="w-full text-xs leading-relaxed resize-none outline-none bg-transparent"
+                    style={{ color: 'rgba(255,255,255,0.75)', fontFamily: 'monospace' }}
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button onClick={closeConsulta} className="btn btn-ghost btn-sm flex-1">Fechar</button>
+                  {patient.phone && (
+                    <a
+                      href={`https://wa.me/55${patient.phone.replace(/\D/g, '')}?text=${encodeURIComponent(consultaResumo)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold flex-1"
+                      style={{ background: '#25D366', color: '#fff' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.125.557 4.118 1.528 5.845L0 24l6.335-1.652A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-4.999-1.364l-.359-.213-3.712.968.992-3.614-.233-.372A9.818 9.818 0 112.182 12c0-5.42 4.41-9.818 9.818-9.818s9.818 4.398 9.818 9.818-4.398 9.818-9.818 9.818z"/>
+                      </svg>
+                      Abrir WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
             ) : (
               <>
@@ -1146,7 +1227,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
                 </div>
 
                 <div className="flex gap-2 justify-end mt-5">
-                  <button onClick={() => setConsultaOpen(false)} className="btn btn-ghost btn-sm">Cancelar</button>
+                  <button onClick={closeConsulta} className="btn btn-ghost btn-sm">Cancelar</button>
                   <button
                     onClick={handleSaveConsulta}
                     disabled={consultaSaving}
