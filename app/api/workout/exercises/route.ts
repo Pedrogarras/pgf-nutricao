@@ -7,6 +7,16 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
 
   const body = await request.json()
+
+  // Verify workout_day belongs to a plan owned by this professional
+  const { data: day } = await supabase
+    .from('workout_days')
+    .select('workout_plans(professional_id)')
+    .eq('id', body.workout_day_id)
+    .single()
+  const ownerId = (day?.workout_plans as { professional_id?: string } | null)?.professional_id
+  if (!day || ownerId !== user.id) return NextResponse.json({ error: 'Dia não encontrado' }, { status: 404 })
+
   const { data, error } = await supabase.from('workout_exercises').insert({
     workout_day_id: body.workout_day_id,
     exercise_id: body.exercise_id,
