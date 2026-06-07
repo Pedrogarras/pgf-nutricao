@@ -1,7 +1,7 @@
 'use client'
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan } from './actions'
+import { createDietPlan, deleteDietPlan, togglePlanActive, renameDietPlan, createPatientAccount, updatePatientPassword, revokePatientAccess } from './actions'
 
 type DietPlan = {
   id: string
@@ -18,6 +18,8 @@ type Patient = {
   goal: string | null
   weight_kg: number | null
   height_cm?: number | null
+  email?: string | null
+  auth_user_id?: string | null
 }
 
 interface Props {
@@ -32,6 +34,15 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  // Patient account management
+  const [hasAccess, setHasAccess] = useState(!!patient.auth_user_id)
+  const [patientEmail, setPatientEmail] = useState(patient.email ?? '')
+  const [showAccessModal, setShowAccessModal] = useState<'create' | 'password' | null>(null)
+  const [accessEmail, setAccessEmail] = useState(patient.email ?? '')
+  const [accessPassword, setAccessPassword] = useState('')
+  const [accessError, setAccessError] = useState('')
+  const [accessLoading, setAccessLoading] = useState(false)
 
   const handleCreate = () => {
     if (!newTitle.trim()) return
@@ -62,6 +73,40 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
     startTransition(async () => {
       await renameDietPlan(planId, renameVal.trim(), patient.id)
     })
+  }
+
+  const handleCreateAccess = async () => {
+    if (!accessEmail.trim() || !accessPassword.trim()) return
+    setAccessLoading(true)
+    setAccessError('')
+    const result = await createPatientAccount(patient.id, accessEmail, accessPassword)
+    setAccessLoading(false)
+    if (result?.error) { setAccessError(result.error); return }
+    setHasAccess(true)
+    setPatientEmail(accessEmail.trim().toLowerCase())
+    setShowAccessModal(null)
+    setAccessPassword('')
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!accessPassword.trim()) return
+    setAccessLoading(true)
+    setAccessError('')
+    const result = await updatePatientPassword(patient.id, accessPassword)
+    setAccessLoading(false)
+    if (result?.error) { setAccessError(result.error); return }
+    setShowAccessModal(null)
+    setAccessPassword('')
+  }
+
+  const handleRevokeAccess = async () => {
+    if (!confirm(`Revogar acesso de ${patient.full_name}?\n\nEla não conseguirá mais fazer login.`)) return
+    setAccessLoading(true)
+    const result = await revokePatientAccess(patient.id)
+    setAccessLoading(false)
+    if (result?.error) { alert(result.error); return }
+    setHasAccess(false)
+    setPatientEmail('')
   }
 
   const initials = patient.full_name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()
@@ -352,7 +397,179 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             Múltiplos planos podem estar ativos ao mesmo tempo — o paciente escolhe entre eles no app.
           </div>
         )}
+
+        {/* ── Patient Account Access ── */}
+        <div className="mt-10">
+          <div className="mb-4">
+            <div className="text-[10px] font-bold tracking-[2px] uppercase mb-1" style={{ color: 'rgba(255,255,255,0.2)' }}>
+              Acesso
+            </div>
+            <div className="text-lg font-bold text-white leading-none">Login do Paciente</div>
+          </div>
+
+          <div
+            className="rounded-2xl p-5"
+            style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {/* Status dot */}
+                <div
+                  className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                  style={{
+                    background: hasAccess ? '#34d399' : 'rgba(255,255,255,0.18)',
+                    boxShadow: hasAccess ? '0 0 8px rgba(52,211,153,0.5)' : 'none',
+                  }}
+                />
+                <div>
+                  {hasAccess ? (
+                    <>
+                      <div className="text-sm font-semibold text-white">Acesso ativo</div>
+                      {patientEmail && (
+                        <div className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.38)' }}>{patientEmail}</div>
+                      )}
+                      <div className="text-[11px] mt-1" style={{ color: 'rgba(255,255,255,0.22)' }}>
+                        Link:{' '}
+                        <span style={{ color: '#93C5FD' }}>
+                          pedro-garrastazu-emagrecimento.vercel.app/login?tipo=aluno
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm font-semibold" style={{ color: 'rgba(226,232,248,0.5)' }}>
+                        Sem acesso
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: 'rgba(197,205,240,0.3)' }}>
+                        Crie um login para o paciente acessar o app
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-2 flex-shrink-0">
+                {hasAccess ? (
+                  <>
+                    <button
+                      onClick={() => { setAccessError(''); setAccessPassword(''); setShowAccessModal('password') }}
+                      className="btn btn-outline btn-sm"
+                    >
+                      Alterar senha
+                    </button>
+                    <button
+                      onClick={handleRevokeAccess}
+                      disabled={accessLoading}
+                      className="btn btn-ghost btn-sm"
+                      style={{ color: '#fca5a5' }}
+                    >
+                      Revogar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => { setAccessError(''); setAccessPassword(''); setShowAccessModal('create') }}
+                    className="btn btn-primary btn-sm"
+                  >
+                    + Criar Login
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* ── Access Modal (create / change password) ── */}
+      {showAccessModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.78)' }}
+          onClick={e => e.target === e.currentTarget && setShowAccessModal(null)}
+        >
+          <div
+            className="relative rounded-2xl p-7 w-full max-w-sm shadow-2xl"
+            style={{ background: 'var(--dark-card)', border: '1px solid rgba(37,99,235,0.35)' }}
+          >
+            <div className="absolute top-0 left-8 right-8 h-px rounded-full"
+              style={{ background: 'linear-gradient(90deg, transparent, #2563EB, transparent)' }} />
+
+            <div className="font-black text-white text-lg tracking-tight mb-1">
+              {showAccessModal === 'create' ? 'Criar Login' : 'Alterar Senha'}
+            </div>
+            <div className="text-sm mb-6" style={{ color: 'rgba(255,255,255,0.38)' }}>
+              {showAccessModal === 'create'
+                ? `Definir credenciais de acesso para ${patient.full_name}`
+                : `Nova senha para ${patient.full_name}`
+              }
+            </div>
+
+            <div className="space-y-4">
+              {showAccessModal === 'create' && (
+                <div>
+                  <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                    style={{ color: 'rgba(255,255,255,0.3)' }}>E-mail</label>
+                  <input
+                    type="email"
+                    value={accessEmail}
+                    onChange={e => setAccessEmail(e.target.value)}
+                    placeholder="email@exemplo.com"
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                    style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[10px] font-bold tracking-[2px] uppercase mb-2"
+                  style={{ color: 'rgba(255,255,255,0.3)' }}>
+                  {showAccessModal === 'create' ? 'Senha' : 'Nova Senha'}
+                </label>
+                <input
+                  type="password"
+                  value={accessPassword}
+                  onChange={e => setAccessPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (showAccessModal === 'create' ? handleCreateAccess() : handleUpdatePassword())}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none"
+                  style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border2)' }}
+                  autoFocus
+                />
+              </div>
+
+              {accessError && (
+                <div className="text-xs px-3 py-2 rounded-lg" style={{ background: 'rgba(239,68,68,0.12)', color: '#FCA5A5' }}>
+                  {accessError}
+                </div>
+              )}
+
+              {showAccessModal === 'create' && (
+                <div className="text-xs p-3 rounded-lg" style={{ background: 'rgba(37,99,235,0.08)', color: 'rgba(147,197,253,0.8)', border: '1px solid rgba(37,99,235,0.2)' }}>
+                  Link de acesso:{' '}
+                  <span className="font-semibold">pedro-garrastazu-emagrecimento.vercel.app/login?tipo=aluno</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 justify-end mt-6">
+              <button
+                onClick={() => { setShowAccessModal(null); setAccessError('') }}
+                className="btn btn-ghost btn-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={showAccessModal === 'create' ? handleCreateAccess : handleUpdatePassword}
+                disabled={accessLoading || !accessPassword.trim() || (showAccessModal === 'create' && !accessEmail.trim())}
+                className="btn btn-primary btn-sm"
+                style={{ opacity: accessLoading ? 0.6 : 1 }}
+              >
+                {accessLoading ? 'Salvando...' : showAccessModal === 'create' ? 'Criar acesso' : 'Salvar senha'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* New Plan Modal */}
       {showNewPlan && (
