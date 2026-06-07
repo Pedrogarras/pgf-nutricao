@@ -18,6 +18,7 @@ const NAV = [
   { label: 'Ferramentas', items: [
     { href: '/pro/alimentos',  label: 'Banco de Alimentos' },
     { href: '/pro/receitas',   label: 'Receitas' },
+    { href: '/pro/templates',  label: 'Templates de Refeição' },
     { href: '/pro/exercicios', label: 'Exercícios' },
     { href: '/pro/agenda',     label: 'Agenda' },
   ]},

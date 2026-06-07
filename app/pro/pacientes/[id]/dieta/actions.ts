@@ -436,3 +436,98 @@ export async function applyTemplate(planId: string, template: TemplateId) {
 
   return { meals: createdMeals }
 }
+
+// ===================== MEAL TEMPLATES =====================
+
+export async function saveMealAsTemplate(mealId: string, name: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: meal } = await supabase
+    .from('meals')
+    .select('id, name, emoji, time_start, diet_plans(professional_id), meal_foods(id, food_id, quantity_g, quantity_description, sort_order, food:foods(name))')
+    .eq('id', mealId)
+    .single()
+
+  const ownerId = (meal?.diet_plans as { professional_id: string } | null)?.professional_id
+  if (ownerId !== user.id) return { error: 'Sem permissão' }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const foods = ((meal?.meal_foods ?? []) as any[])
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map(mf => ({
+      food_id: mf.food_id,
+      food_name: (mf.food as { name: string } | null)?.name ?? '',
+      quantity_g: mf.quantity_g,
+      quantity_description: mf.quantity_description ?? '',
+    }))
+
+  const { data, error } = await supabase
+    .from('meal_templates')
+    .insert({
+      professional_id: user.id,
+      name: name || (meal?.name ?? 'Template'),
+      emoji: meal?.emoji ?? '🍽️',
+      time_start: meal?.time_start ?? null,
+      foods,
+    })
+    .select()
+    .single()
+
+  if (error) return { error: error.message }
+  return { template: data }
+}
+
+export async function applyMealTemplate(planId: string, templateId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  // Verify plan ownership
+  const { data: plan } = await supabase
+    .from('diet_plans')
+    .select('id')
+    .eq('id', planId)
+    .eq('professional_id', user.id)
+    .single()
+  if (!plan) return { error: 'Plano não encontrado' }
+
+  // Get the template
+  const { data: tpl } = await supabase
+    .from('meal_templates')
+    .select('*')
+    .eq('id', templateId)
+    .eq('professional_id', user.id)
+    .single()
+  if (!tpl) return { error: 'Template não encontrado' }
+
+  // Create the meal
+  const { data: meal, error: mealErr } = await supabase
+    .from('meals')
+    .insert({ diet_plan_id: planId, name: tpl.name, emoji: tpl.emoji, time_start: tpl.time_start, sort_order: 99 })
+    .select()
+    .single()
+
+  if (mealErr || !meal) return { error: 'Erro ao criar refeição' }
+
+  const createdFoods: unknown[] = []
+  const templateFoods = (tpl.foods ?? []) as Array<{ food_id: string; food_name: string; quantity_g: number; quantity_description: string }>
+
+  for (let j = 0; j < templateFoods.length; j++) {
+    const f = templateFoods[j]
+    const { data: food } = await supabase.from('foods').select('*').eq('id', f.food_id).eq('active', true).single()
+    if (!food) continue
+    const { data: mf } = await supabase
+      .from('meal_foods')
+      .insert({ meal_id: meal.id, food_id: food.id, quantity_g: f.quantity_g, quantity_description: f.quantity_description, sort_order: j + 1 })
+      .select()
+      .single()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (mf) createdFoods.push({ ...(mf as any), food, substitutes: [] })
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return { meal: { ...(meal as any), meal_foods: createdFoods } }
+}

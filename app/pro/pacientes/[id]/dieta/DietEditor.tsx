@@ -5,7 +5,7 @@ import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
   updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal,
-  reorderMeal, reorderMealFood, duplicateMeal
+  reorderMeal, reorderMealFood, duplicateMeal, saveMealAsTemplate, applyMealTemplate
 } from './actions'
 
 // ===================== TIPOS =====================
@@ -1147,6 +1147,19 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
   }
 
   const [duplicating, setDuplicating] = useState(false)
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false)
+  const [templateName, setTemplateName] = useState('')
+
+  async function handleSaveTemplate(e: React.FormEvent) {
+    e.preventDefault()
+    setSavingTemplate(true)
+    const result = await saveMealAsTemplate(meal.id, templateName.trim() || meal.name)
+    setSavingTemplate(false)
+    setSaveTemplateOpen(false)
+    setTemplateName('')
+    if (result?.error) { alert(result.error); return }
+  }
 
   async function handleDuplicate(e: React.MouseEvent) {
     e.stopPropagation()
@@ -1239,6 +1252,15 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
           </div>
+          <button
+            title="Salvar como template"
+            className="text-gray-300 hover:text-amber-500 transition-colors"
+            onClick={e => { e.stopPropagation(); setTemplateName(meal.name); setSaveTemplateOpen(true) }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          </button>
           <button
             disabled={duplicating}
             title="Duplicar refeição"
@@ -1412,6 +1434,41 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
           </div>
         </div>
       )}
+
+      {/* Save as Template Modal */}
+      {saveTemplateOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setSaveTemplateOpen(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2 mb-4">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+              <h3 className="font-bold text-lg">Salvar como Template</h3>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              Salva <strong>{meal.meal_foods.length} alimento{meal.meal_foods.length !== 1 ? 's' : ''}</strong> desta refeição para reutilizar em outros planos.
+            </p>
+            <form onSubmit={handleSaveTemplate} className="space-y-4">
+              <div>
+                <label className="form-label">Nome do template</label>
+                <input
+                  value={templateName}
+                  onChange={e => setTemplateName(e.target.value)}
+                  className="form-input"
+                  placeholder={meal.name}
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" disabled={savingTemplate} className="btn btn-primary flex-1">
+                  {savingTemplate ? 'Salvando...' : '⭐ Salvar template'}
+                </button>
+                <button type="button" onClick={() => setSaveTemplateOpen(false)} className="btn btn-ghost">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1518,6 +1575,10 @@ export default function DietEditor({ patient, plan, professionalId }: {
   const [showTemplatePicker, setShowTemplatePicker] = useState(plan.meals?.length === 0)
   const [tab, setTab] = useState<'plano' | 'metas' | 'anamnese' | 'evolucao' | 'pdf'>('plano')
   const [addMealOpen, setAddMealOpen] = useState(false)
+  const [addMealTab, setAddMealTab] = useState<'blank' | 'library'>('blank')
+  const [mealTemplates, setMealTemplates] = useState<Array<{ id: string; name: string; emoji: string | null; time_start: string | null; foods: Array<{ food_name: string; quantity_g: number }> }>>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [applyingTemplate, setApplyingTemplate] = useState<string | null>(null)
   const [publishing, setPublishing] = useState(false)
   const [toast, setToast] = useState('')
 
@@ -1527,6 +1588,33 @@ export default function DietEditor({ patient, plan, professionalId }: {
   function showToast(msg: string) {
     setToast(msg)
     setTimeout(() => setToast(''), 3000)
+  }
+
+  async function loadMealTemplates() {
+    if (loadingTemplates) return
+    setLoadingTemplates(true)
+    const res = await fetch('/api/meal-templates')
+    const json = await res.json()
+    setMealTemplates(json.templates ?? [])
+    setLoadingTemplates(false)
+  }
+
+  function openAddMeal(tab: 'blank' | 'library' = 'blank') {
+    setAddMealTab(tab)
+    setAddMealOpen(true)
+    if (tab === 'library') loadMealTemplates()
+  }
+
+  async function handleApplyMealTemplate(templateId: string) {
+    setApplyingTemplate(templateId)
+    const result = await applyMealTemplate(plan.id, templateId)
+    setApplyingTemplate(null)
+    if (result?.error) { showToast('Erro: ' + result.error); return }
+    if (result?.meal) {
+      setMeals(prev => [...prev, result.meal as LocalMeal])
+      setAddMealOpen(false)
+      showToast('Refeição criada a partir do template!')
+    }
   }
 
   async function handleAddMeal(e: React.FormEvent<HTMLFormElement>) {
@@ -1714,7 +1802,10 @@ export default function DietEditor({ patient, plan, professionalId }: {
             ))}
 
             <div className="flex gap-3 mt-4">
-              <button onClick={() => setAddMealOpen(true)} className="btn btn-outline">+ Nova Refeição</button>
+              <div className="flex gap-2">
+                <button onClick={() => openAddMeal('blank')} className="btn btn-outline">+ Nova Refeição</button>
+                <button onClick={() => openAddMeal('library')} className="btn btn-ghost text-amber-600 hover:bg-amber-50">⭐ Da biblioteca</button>
+              </div>
             </div>
           </div>
         )}
@@ -1728,32 +1819,105 @@ export default function DietEditor({ patient, plan, professionalId }: {
       {/* Modal nova refeição */}
       {addMealOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setAddMealOpen(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6" onClick={e => e.stopPropagation()}>
-            <h3 className="font-bold text-lg mb-4">Nova Refeição</h3>
-            <form onSubmit={handleAddMeal} className="space-y-4">
-              <div>
-                <label className="form-label">Nome</label>
-                <input name="name" required className="form-input" placeholder="Café da manhã, Almoço..." />
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            {/* Tab header */}
+            <div className="flex border-b border-gray-100">
+              <button
+                onClick={() => setAddMealTab('blank')}
+                className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${addMealTab === 'blank' ? 'text-pgf-600 border-b-2 border-pgf-600 bg-pgf-50/40' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                Em branco
+              </button>
+              <button
+                onClick={() => { setAddMealTab('library'); loadMealTemplates() }}
+                className={`flex-1 py-3.5 text-sm font-semibold transition-colors ${addMealTab === 'library' ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/40' : 'text-gray-400 hover:text-gray-600'}`}
+              >
+                ⭐ Da biblioteca
+              </button>
+            </div>
+
+            {addMealTab === 'blank' ? (
+              <div className="p-6">
+                <form onSubmit={handleAddMeal} className="space-y-4">
+                  <div>
+                    <label className="form-label">Nome</label>
+                    <input name="name" required className="form-input" placeholder="Café da manhã, Almoço..." autoFocus />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="form-label">Horário</label>
+                      <input name="time" type="time" className="form-input" />
+                    </div>
+                    <div>
+                      <label className="form-label">Ícone</label>
+                      <select name="emoji" className="form-select">
+                        <option>☀️</option><option>🍎</option><option>🍽️</option>
+                        <option>🌙</option><option>⚡</option><option>🏋️</option>
+                        <option>🥗</option><option>💊</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => setAddMealOpen(false)} className="btn btn-ghost">Cancelar</button>
+                    <button type="submit" className="btn btn-primary">Criar</button>
+                  </div>
+                </form>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="form-label">Horário</label>
-                  <input name="time" type="time" className="form-input" />
+            ) : (
+              <div className="p-4 max-h-96 overflow-y-auto">
+                {loadingTemplates ? (
+                  <div className="py-10 text-center text-sm text-gray-400">Carregando templates...</div>
+                ) : mealTemplates.length === 0 ? (
+                  <div className="py-10 text-center">
+                    <div className="text-3xl mb-2">⭐</div>
+                    <p className="text-sm text-gray-500 font-medium">Nenhum template salvo ainda.</p>
+                    <p className="text-xs text-gray-400 mt-1">Salve uma refeição como template usando o ícone ⭐ em qualquer refeição.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {mealTemplates.map(tpl => (
+                      <button
+                        key={tpl.id}
+                        disabled={applyingTemplate === tpl.id}
+                        onClick={() => handleApplyMealTemplate(tpl.id)}
+                        className="w-full text-left border border-gray-100 hover:border-amber-200 hover:bg-amber-50/30 rounded-xl p-3.5 transition-all group"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-lg">{tpl.emoji ?? '🍽️'}</span>
+                            <div>
+                              <div className="font-semibold text-sm text-gray-900">{tpl.name}</div>
+                              <div className="text-xs text-gray-400 mt-0.5">
+                                {tpl.time_start && <span className="mr-2">🕐 {tpl.time_start}</span>}
+                                {tpl.foods.length} alimento{tpl.foods.length !== 1 ? 's' : ''}
+                              </div>
+                            </div>
+                          </div>
+                          <span className={`text-xs font-medium px-2 py-1 rounded-lg transition-colors ${applyingTemplate === tpl.id ? 'bg-gray-100 text-gray-400' : 'bg-amber-50 text-amber-600 group-hover:bg-amber-100'}`}>
+                            {applyingTemplate === tpl.id ? 'Aplicando...' : '+ Usar'}
+                          </span>
+                        </div>
+                        {tpl.foods.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {tpl.foods.slice(0, 4).map((f, i) => (
+                              <span key={i} className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                                {f.food_name} {f.quantity_g}g
+                              </span>
+                            ))}
+                            {tpl.foods.length > 4 && (
+                              <span className="text-[10px] text-gray-400">+{tpl.foods.length - 4} mais</span>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="pt-3 border-t border-gray-50 mt-3">
+                  <button onClick={() => setAddMealOpen(false)} className="btn btn-ghost w-full text-sm">Cancelar</button>
                 </div>
-                <div>
-                  <label className="form-label">Ícone</label>
-                  <select name="emoji" className="form-select">
-                    <option>☀️</option><option>🍎</option><option>🍽️</option>
-                    <option>🌙</option><option>⚡</option><option>🏋️</option>
-                    <option>🥗</option><option>💊</option>
-                  </select>
-                </div>
               </div>
-              <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => setAddMealOpen(false)} className="btn btn-ghost">Cancelar</button>
-                <button type="submit" className="btn btn-primary">Criar</button>
-              </div>
-            </form>
+            )}
           </div>
         </div>
       )}
