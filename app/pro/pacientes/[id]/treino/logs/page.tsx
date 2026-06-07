@@ -18,7 +18,30 @@ interface WorkoutDay {
   sort_order: number
 }
 
+interface ExercisePR {
+  id: string
+  exercise_name: string
+  metric: string
+  value: number
+  unit_label: string | null
+  notes: string | null
+  achieved_at: string
+}
+
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
+function fmtPRValue(pr: ExercisePR) {
+  if (pr.metric === 'time_sec') {
+    const min = Math.floor(pr.value / 60)
+    const sec = Math.round(pr.value % 60)
+    return min > 0 ? `${min}:${String(sec).padStart(2, '0')}` : `${sec}s`
+  }
+  const unit = pr.unit_label ?? (pr.metric === 'weight_kg' ? 'kg' : pr.metric === 'reps' ? 'reps' : pr.metric === 'distance_m' ? 'm' : '')
+  return `${pr.value}${unit ? ` ${unit}` : ''}`
+}
+
+const METRIC_ICON: Record<string, string> = {
+  weight_kg: '🏋️', reps: '🔢', time_sec: '⏱', distance_m: '📏', custom: '✏️',
+}
 function SectionHead({ title }: { title: string }) {
   return (
     <h2 className="text-sm font-bold mb-3" style={{ color: 'rgba(255,255,255,0.7)' }}>
@@ -48,6 +71,7 @@ export default async function WorkoutLogsPage({ params }: { params: Promise<{ id
     { data: patient },
     { data: logs },
     { data: workoutDays },
+    { data: prs },
   ] = await Promise.all([
     supabase.from('patients').select('id, full_name').eq('id', id).eq('professional_id', user.id).single(),
     supabase.from('workout_logs')
@@ -62,6 +86,10 @@ export default async function WorkoutLogsPage({ params }: { params: Promise<{ id
         supabase.from('workout_plans').select('id').eq('patient_id', id).eq('active', true)
       )
       .order('sort_order'),
+    supabase.from('exercise_personal_records')
+      .select('id, exercise_name, metric, value, unit_label, notes, achieved_at')
+      .eq('patient_id', id)
+      .order('achieved_at', { ascending: false }),
   ])
 
   if (!patient) notFound()
@@ -356,6 +384,63 @@ export default async function WorkoutLogsPage({ params }: { params: Promise<{ id
             </div>
           </>
         )}
+
+        {/* ── Personal Records ───────────────────────────────────── */}
+        {prs && prs.length > 0 && (() => {
+          // Group by exercise name, keep best per metric
+          const grouped: Record<string, ExercisePR[]> = {}
+          for (const pr of prs) {
+            if (!grouped[pr.exercise_name]) grouped[pr.exercise_name] = []
+            grouped[pr.exercise_name].push(pr)
+          }
+          const sortedGroups = Object.entries(grouped)
+            .sort((a, b) => {
+              const la = a[1].reduce((m, p) => p.achieved_at > m ? p.achieved_at : m, '')
+              const lb = b[1].reduce((m, p) => p.achieved_at > m ? p.achieved_at : m, '')
+              return lb.localeCompare(la)
+            })
+          return (
+            <div className="card p-5">
+              <SectionHead title={`🏆 Recordes Pessoais (${sortedGroups.length} exercícios)`} />
+              <div className="space-y-2">
+                {sortedGroups.map(([name, records]) => {
+                  // Find best (highest, except time_sec where lowest is best)
+                  const best = records.reduce((b, pr) => {
+                    if (pr.metric === 'time_sec') return pr.value < b.value ? pr : b
+                    return pr.value > b.value ? pr : b
+                  }, records[0])
+                  const thisMonthPR = records.some(pr => {
+                    const d = new Date(pr.achieved_at + 'T12:00')
+                    const now = new Date()
+                    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+                  })
+                  return (
+                    <div key={name}
+                      className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                      style={{ background: 'var(--dark-surface)', border: '1px solid var(--dark-border)' }}>
+                      <div className="text-lg flex-shrink-0">{METRIC_ICON[best.metric] ?? '✏️'}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-white truncate">{name}</div>
+                        <div className="text-[10px]" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          {new Date(best.achieved_at + 'T12:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          {best.notes && ` · ${best.notes}`}
+                        </div>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <div className="text-sm font-black" style={{ color: '#FCD34D' }}>
+                          {fmtPRValue(best)}
+                        </div>
+                        {thisMonthPR && (
+                          <div className="text-[9px] font-bold" style={{ color: '#4ADE80' }}>✨ este mês</div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })()}
 
         <div className="pb-8" />
       </div>
