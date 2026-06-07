@@ -399,6 +399,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans }: Props) 
             { href: `/pro/pacientes/${patient.id}/medidas`,     icon: '📏', label: 'Medidas',    desc: 'Avaliações físicas' },
             { href: `/pro/pacientes/${patient.id}/fotos`,       icon: '📸', label: 'Fotos',      desc: 'Evolução visual' },
             { href: `/pro/pacientes/${patient.id}/diario`,      icon: '📔', label: 'Diário',     desc: 'Registro alimentar' },
+            { href: `/pro/pacientes/${patient.id}/aderencia`,    icon: '📊', label: 'Aderência',  desc: 'Análise do diário' },
             { href: `/pro/pacientes/${patient.id}/exames`,      icon: '🔬', label: 'Exames',     desc: 'Laboratoriais' },
             { href: `/pro/pacientes/${patient.id}/suplementos`, icon: '💊', label: 'Suplementos',desc: 'Prescrição ativa' },
             { href: `/pro/pacientes/${patient.id}/treino`,      icon: '🏋️', label: 'Treino',     desc: 'Prescrição física' },
