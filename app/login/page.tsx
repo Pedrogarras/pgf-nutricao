@@ -1,5 +1,6 @@
 'use client'
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { loginProfessional, loginStudent } from './actions'
 
@@ -38,10 +39,17 @@ function Pendant() {
   )
 }
 
-export default function LoginPage() {
-  const [tab, setTab] = useState<'pro' | 'aluno'>('pro')
+function LoginPageInner() {
+  const searchParams = useSearchParams()
+  const [tab, setTab] = useState<'pro' | 'aluno'>(
+    searchParams.get('tipo') === 'aluno' ? 'aluno' : 'pro'
+  )
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    if (searchParams.get('tipo') === 'aluno') setTab('aluno')
+  }, [searchParams])
 
   async function handleProLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -89,11 +97,11 @@ export default function LoginPage() {
           <div className="flex border-b border-gray-100">
             <button onClick={() => { setTab('pro'); setError('') }}
               className={`flex-1 py-4 text-sm font-semibold transition-colors ${tab === 'pro' ? 'text-pgf-600 border-b-2 border-pgf-600 bg-pgf-50' : 'text-gray-400 hover:text-gray-600'}`}>
-              🩺 Sou Nutricionista
+              Nutricionista
             </button>
             <button onClick={() => { setTab('aluno'); setError('') }}
               className={`flex-1 py-4 text-sm font-semibold transition-colors ${tab === 'aluno' ? 'text-pgf-600 border-b-2 border-pgf-600 bg-pgf-50' : 'text-gray-400 hover:text-gray-600'}`}>
-              🏋️ Sou Aluno
+              Paciente
             </button>
           </div>
 
@@ -118,17 +126,16 @@ export default function LoginPage() {
               </form>
             ) : (
               <form onSubmit={handleAlunoLogin} className="space-y-4">
-                <div className="p-3 bg-pgf-50 rounded-lg text-xs text-pgf-600 border border-pgf-100">
-                  Seu usuário é o seu <strong>nome completo</strong> e sua senha é a sua <strong>data de nascimento</strong> (DD/MM/AAAA).
+                <div className="p-3 bg-pgf-50 rounded-lg text-xs text-pgf-700 border border-pgf-100">
+                  Use o <strong>e-mail</strong> e a <strong>senha</strong> fornecidos pelo seu nutricionista.
                 </div>
                 <div>
-                  <label className="form-label">Nome completo</label>
-                  <input name="full_name" type="text" required placeholder="Ex: Ana Martins" className="form-input" autoComplete="name" />
+                  <label className="form-label">E-mail</label>
+                  <input name="email" type="email" required placeholder="seu@email.com" className="form-input" autoComplete="email" />
                 </div>
                 <div>
-                  <label className="form-label">Data de nascimento</label>
-                  <input name="date_of_birth" type="text" required placeholder="DD/MM/AAAA" maxLength={10} className="form-input" pattern="\d{2}/\d{2}/\d{4}" />
-                  <p className="text-xs text-gray-400 mt-1">Formato: 25/03/1995</p>
+                  <label className="form-label">Senha</label>
+                  <input name="password" type="password" required placeholder="••••••••" className="form-input" autoComplete="current-password" />
                 </div>
                 <button type="submit" disabled={isPending} className="btn btn-primary w-full justify-center py-2.5 text-base">
                   {isPending ? 'Entrando...' : 'Ver meu plano'}
@@ -153,5 +160,13 @@ export default function LoginPage() {
         <div className="w-16 h-px bg-white" />
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   )
 }
