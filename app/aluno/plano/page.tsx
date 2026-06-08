@@ -322,7 +322,6 @@ export default function AlunoPlanoPage() {
                           {meal.time_start && meal.meal_foods.length > 0 && ' · '}
                           {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
                         </div>
-                        </div>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="text-right">
