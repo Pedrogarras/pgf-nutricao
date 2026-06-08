@@ -13,7 +13,7 @@ interface FoodMeasure { id: string; description: string; grams: number }
 interface LocalFood extends Food { }
 interface LocalSubstitute { id: string; food: LocalFood; quantity_g: number; quantity_description: string; sort_order: number; notes: string | null }
 interface LocalMealFood { id: string; food: LocalFood; quantity_g: number; quantity_description: string; food_id: string; meal_id: string; sort_order: number; notes: string | null; substitutes: LocalSubstitute[] }
-interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null }
+interface LocalMeal { id: string; name: string; time_start: string; emoji: string; sort_order: number; meal_foods: LocalMealFood[]; notes: string | null; is_substitute: boolean }
 interface LocalAnamnesis { allergies?: string | null; dislikes?: string | null; preferences?: string | null; meals_per_day?: string | null; supplements?: string | null; medications?: string | null; pathologies?: string | null; sleep_quality?: string | null; stress_level?: string | null; notes?: string | null }
 interface LocalPlan { id: string; title?: string | null; kcal_goal: number | null; protein_goal_g: number | null; carbs_goal_g: number | null; fat_goal_g: number | null; notes: string | null; published_at: string | null; valid_from?: string | null; valid_until?: string | null; meals: LocalMeal[]; anamnesis?: LocalAnamnesis | null }
 
@@ -36,7 +36,7 @@ function mealTotal(meal: LocalMeal) {
   }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
 }
 function planTotal(meals: LocalMeal[]) {
-  return meals.reduce((acc, meal) => {
+  return meals.filter(m => !m.is_substitute).reduce((acc, meal) => {
     const t = mealTotal(meal)
     return { kcal: acc.kcal + t.kcal, protein: acc.protein + t.protein, carbs: acc.carbs + t.carbs, fat: acc.fat + t.fat, fiber: acc.fiber + t.fiber, sodium: acc.sodium + t.sodium }
   }, { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sodium: 0 })
@@ -1217,6 +1217,13 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
     }
   }
 
+  async function handleToggleSubstitute(e: React.MouseEvent) {
+    e.stopPropagation()
+    const newVal = !meal.is_substitute
+    await updateMeal(meal.id, { is_substitute: newVal })
+    onUpdate({ ...meal, is_substitute: newVal })
+  }
+
   async function handleNotesSave() {
     if (!notesDirty) return
     await updateMeal(meal.id, { notes: mealNotes })
@@ -1236,7 +1243,7 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
   }
 
   return (
-    <div className="card mb-4 overflow-hidden">
+    <div className={`card mb-4 overflow-hidden transition-opacity ${meal.is_substitute ? 'opacity-75' : ''}`}>
       <div
         className="group flex items-center justify-between px-5 py-3.5 bg-pgf-50 border-b border-pgf-100 cursor-pointer"
         onClick={() => setCollapsed(!collapsed)}
@@ -1247,8 +1254,13 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
             : <span className="w-7 h-7 rounded-lg bg-pgf-100 flex items-center justify-center text-[10px] font-black text-pgf-600">R</span>
           }
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-bold text-pgf-700">{meal.name}</span>
+              {meal.is_substitute && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                  opcional
+                </span>
+              )}
               <button
                 onClick={e => { e.stopPropagation(); setEditMealName(meal.name); setEditMealTime(meal.time_start ?? ''); setEditMealEmoji(meal.emoji ?? ''); setEditMealOpen(true) }}
                 className="text-gray-300 hover:text-pgf-500 transition-colors opacity-0 group-hover:opacity-100"
@@ -1270,6 +1282,29 @@ function MealCard({ meal, planId, onUpdate, onRemoveMeal, onMoveUp, onMoveDown, 
             <span className="text-amber-600 font-semibold hidden sm:block">C {r(total.carbs)}g</span>
             <span className="text-red-500 font-semibold hidden sm:block">G {r(total.fat)}g</span>
           </div>
+          {/* Substitute toggle */}
+          <button
+            onClick={handleToggleSubstitute}
+            title={meal.is_substitute ? 'Refeição opcional — clique para incluir no cálculo' : 'Incluída no cálculo — clique para marcar como opcional'}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-all border ${
+              meal.is_substitute
+                ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                : 'bg-white border-gray-200 text-gray-400 hover:border-pgf-300 hover:text-pgf-600'
+            }`}
+          >
+            {meal.is_substitute ? (
+              <>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                Opcional
+              </>
+            ) : (
+              <>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                No cálculo
+              </>
+            )}
+          </button>
+
           {/* Reorder arrows */}
           <div className="flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
             <button

@@ -324,7 +324,7 @@ export async function reorderMealFood(mealId: string, mealFoodId: string, direct
   await supabase.from('meal_foods').update({ sort_order: a.sort_order }).eq('id', b.id)
 }
 
-export async function updateMeal(mealId: string, data: { name?: string; time_start?: string | null; emoji?: string | null; notes?: string }) {
+export async function updateMeal(mealId: string, data: { name?: string; time_start?: string | null; emoji?: string | null; notes?: string; is_substitute?: boolean }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return

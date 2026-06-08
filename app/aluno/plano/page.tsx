@@ -36,6 +36,7 @@ interface Meal {
   emoji: string | null
   sort_order: number
   notes: string | null
+  is_substitute: boolean
   meal_foods: MealFood[]
   totals?: { kcal: number; protein: number; carbs: number; fat: number }
 }
@@ -105,7 +106,7 @@ export default function AlunoPlanoPage() {
         .select(`
           id, title, notes, kcal_goal, protein_goal_g, carbs_goal_g, fat_goal_g, updated_at,
           meals(
-            id, name, time_start, emoji, sort_order, notes,
+            id, name, time_start, emoji, sort_order, notes, is_substitute,
             meal_foods(
               id, quantity_g, quantity_description, notes, sort_order,
               food:foods(name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g, portion_description),
@@ -151,16 +152,16 @@ export default function AlunoPlanoPage() {
         if (saved) setSwappedFoods(JSON.parse(saved))
       } catch (_) { /* ignore */ }
 
-      // Load included meals (default = all included)
+      // Load included meals (default = all non-substitute meals included)
       try {
         const savedIncluded = localStorage.getItem(`pgf-included-${planData.id}`)
         if (savedIncluded) {
           setIncludedMeals(new Set(JSON.parse(savedIncluded)))
         } else {
-          setIncludedMeals(new Set(withTotals.map(m => m.id)))
+          setIncludedMeals(new Set(withTotals.filter(m => !m.is_substitute).map(m => m.id)))
         }
       } catch (_) {
-        setIncludedMeals(new Set(withTotals.map(m => m.id)))
+        setIncludedMeals(new Set(withTotals.filter(m => !m.is_substitute).map(m => m.id)))
       }
 
       // Auto-expand first meal
