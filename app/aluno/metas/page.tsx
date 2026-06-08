@@ -176,7 +176,7 @@ export default function AlunoMetasPage() {
         .order('created_at', { ascending: false })
 
       setGoals(data ?? [])
-    } catch {
+    } catch (_) {
       // ignore
     }
     setLoading(false)

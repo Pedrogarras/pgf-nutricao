@@ -143,7 +143,7 @@ export default function AlunoDiarioPage() {
           carbs: t.carbs > 0 ? Math.round(t.carbs) : null,
           fat: t.fat > 0 ? Math.round(t.fat) : null,
         })
-      } catch { /* ignore */ }
+      } catch (_) { /* ignore */ }
     }
     loadTargets()
   }, [])
@@ -298,7 +298,7 @@ export default function AlunoDiarioPage() {
       if (meals.length > 0) {
         setSelectedPlanMealIds(new Set(meals.map(m => m.id)))
       }
-    } catch {
+    } catch (_) {
       // ignore errors gracefully
     }
     setPlanLoading(false)

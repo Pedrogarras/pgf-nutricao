@@ -412,7 +412,7 @@ export default function PatientHub({ patient, dietPlans: initialPlans, activityS
       await navigator.clipboard.writeText(consultaResumo)
       setResumoCopied(true)
       setTimeout(() => setResumoCopied(false), 2500)
-    } catch {
+    } catch (_) {
       // fallback
     }
   }

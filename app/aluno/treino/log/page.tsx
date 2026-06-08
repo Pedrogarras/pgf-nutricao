@@ -260,7 +260,7 @@ export default function TreinoLogPage() {
       const res = await fetch(`/api/workout-log?from=${last30[0]}&to=${today}`)
       const data = await res.json()
       setLogs(data.logs ?? [])
-    } catch { /* ignore */ }
+    } catch (_) { /* ignore */ }
     setLoading(false)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -304,7 +304,7 @@ export default function TreinoLogPage() {
       }
       await load()
       setModal(null)
-    } catch { /* ignore */ }
+    } catch (_) { /* ignore */ }
     setSaving(false)
   }
 

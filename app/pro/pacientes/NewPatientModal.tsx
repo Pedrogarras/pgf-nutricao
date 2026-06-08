@@ -33,7 +33,7 @@ export default function NewPatientModal({ professionalId }: { professionalId: st
   }
 
   async function copyText(text: string) {
-    try { await navigator.clipboard.writeText(text) } catch {}
+    try { await navigator.clipboard.writeText(text) } catch (_) {}
   }
 
   return (

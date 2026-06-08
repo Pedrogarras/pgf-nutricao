@@ -58,15 +58,15 @@ export default function AlunoSupplementsPage() {
         const dbChecked = new Set<string>((logRes.logs ?? []).filter((l: { taken: boolean }) => l.taken).map((l: { supplement_id: string }) => l.supplement_id))
         if (dbChecked.size > 0) {
           setChecked(dbChecked)
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...dbChecked])) } catch { /* ignore */ }
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...dbChecked])) } catch (_) { /* ignore */ }
         } else {
           // Fall back to localStorage for offline state
           try {
             const saved = localStorage.getItem(STORAGE_KEY)
             if (saved) setChecked(new Set(JSON.parse(saved)))
-          } catch { /* ignore */ }
+          } catch (_) { /* ignore */ }
         }
-      } catch { /* ignore */ } finally {
+      } catch (_) { /* ignore */ } finally {
         setLoading(false)
       }
     }
@@ -81,7 +81,7 @@ export default function AlunoSupplementsPage() {
     setChecked(prev => {
       const next = new Set(prev)
       willCheck ? next.add(id) : next.delete(id)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch (_) { /* ignore */ }
       return next
     })
     setToggling(prev => new Set([...prev, id]))
@@ -100,7 +100,7 @@ export default function AlunoSupplementsPage() {
           body: JSON.stringify({ supplement_id: id, logged_date: TODAY }),
         })
       }
-    } catch { /* revert on error */
+    } catch (_) { /* revert on error */
       setChecked(prev => {
         const next = new Set(prev)
         willCheck ? next.delete(id) : next.add(id)
@@ -128,7 +128,7 @@ export default function AlunoSupplementsPage() {
       const res = await fetch(`/api/supplement-logs?from=${from}&to=${to}`)
       const data = await res.json()
       setHistory30(data.logs ?? [])
-    } catch { /* ignore */ }
+    } catch (_) { /* ignore */ }
     setHistLoading(false)
   }, [histLoading, history30.length])
 
@@ -323,7 +323,7 @@ export default function AlunoSupplementsPage() {
                   <button
                     onClick={() => {
                       setChecked(new Set())
-                      try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+                      try { localStorage.removeItem(STORAGE_KEY) } catch (_) { /* ignore */ }
                     }}
                     className="w-full py-2.5 rounded-xl text-xs font-semibold transition-all mt-2"
                     style={{ background: 'rgba(255,255,255,0.03)', color: 'rgba(255,255,255,0.25)', border: '1px solid rgba(255,255,255,0.07)' }}>

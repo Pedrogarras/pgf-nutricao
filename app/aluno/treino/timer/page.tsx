@@ -157,11 +157,11 @@ export default function TimerPage() {
         osc.start(startAt)
         osc.stop(startAt + 0.65)
       })
-    } catch { /* ignore audio errors */ }
+    } catch (_) { /* ignore audio errors */ }
   }
 
   function vibrate() {
-    try { navigator.vibrate?.([200, 100, 200, 100, 400]) } catch { /* ignore */ }
+    try { navigator.vibrate?.([200, 100, 200, 100, 400]) } catch (_) { /* ignore */ }
   }
 
   function handleStart() {

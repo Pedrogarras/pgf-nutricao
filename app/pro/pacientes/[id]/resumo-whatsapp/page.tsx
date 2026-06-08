@@ -289,7 +289,7 @@ export default function ResumoWhatsAppPage() {
       await navigator.clipboard.writeText(message)
       setCopied(true)
       setTimeout(() => setCopied(false), 2500)
-    } catch {
+    } catch (_) {
       // fallback: select textarea
     }
   }

@@ -148,11 +148,11 @@ export default function AlunoPlanoPage() {
       try {
         const saved = localStorage.getItem(`pgf-swaps-${planData.id}`)
         if (saved) setSwappedFoods(JSON.parse(saved))
-      } catch { /* ignore */ }
+      } catch (_) { /* ignore */ }
 
       // Auto-expand first meal
       if (withTotals.length > 0) setExpandedId(withTotals[0].id)
-    } catch {
+    } catch (_) {
       setNoPlan(true)
     }
     setLoading(false)
@@ -161,7 +161,7 @@ export default function AlunoPlanoPage() {
   function handleSwap(mfId: string, subId: string | null) {
     setSwappedFoods(prev => {
       const next = { ...prev, [mfId]: subId }
-      try { if (plan) localStorage.setItem(`pgf-swaps-${plan.id}`, JSON.stringify(next)) } catch { /* ignore */ }
+      try { if (plan) localStorage.setItem(`pgf-swaps-${plan.id}`, JSON.stringify(next)) } catch (_) { /* ignore */ }
       return next
     })
   }

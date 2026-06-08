@@ -65,7 +65,7 @@ export default function ComprasPage() {
     try {
       const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as string[]
       setChecked(new Set(saved))
-    } catch { /* ignore */ }
+    } catch (_) { /* ignore */ }
   }, [])
 
   useEffect(() => {
@@ -155,14 +155,14 @@ export default function ComprasPage() {
       const next = new Set(prev)
       if (next.has(key)) next.delete(key)
       else next.add(key)
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch { /* ignore */ }
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify([...next])) } catch (_) { /* ignore */ }
       return next
     })
   }
 
   function clearChecked() {
     setChecked(new Set())
-    try { localStorage.removeItem(STORAGE_KEY) } catch { /* ignore */ }
+    try { localStorage.removeItem(STORAGE_KEY) } catch (_) { /* ignore */ }
   }
 
   // Group items by food group

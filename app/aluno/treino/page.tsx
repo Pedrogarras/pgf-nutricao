@@ -89,7 +89,7 @@ export default function AlunoTreinoPage() {
         }
         setPlan(sorted)
       }
-    } catch {
+    } catch (_) {
       setNoPlan(true)
     }
     setLoading(false)
