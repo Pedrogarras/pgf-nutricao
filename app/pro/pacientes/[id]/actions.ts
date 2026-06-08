@@ -169,12 +169,12 @@ export async function createPatientAccount(patientId: string, email: string, pas
   if (patient.auth_user_id) return { error: 'Este paciente já possui acesso' }
 
   // Create the auth user with admin privileges
-  const adminClient = await createAdminClient()
+  const adminClient = createAdminClient()
   const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: email.trim().toLowerCase(),
     password,
     email_confirm: true,
-    user_metadata: { full_name: patient.full_name, role: 'aluno' },
+    user_metadata: { full_name: patient.full_name, role: 'student' },
   })
 
   if (authError || !authData?.user) {
@@ -211,7 +211,7 @@ export async function updatePatientPassword(patientId: string, newPassword: stri
 
   if (!patient?.auth_user_id) return { error: 'Paciente sem conta vinculada' }
 
-  const adminClient = await createAdminClient()
+  const adminClient = createAdminClient()
   const { error } = await adminClient.auth.admin.updateUserById(patient.auth_user_id, {
     password: newPassword,
   })
@@ -234,7 +234,7 @@ export async function revokePatientAccess(patientId: string) {
 
   if (!patient?.auth_user_id) return { error: 'Paciente sem conta' }
 
-  const adminClient = await createAdminClient()
+  const adminClient = createAdminClient()
   await adminClient.auth.admin.deleteUser(patient.auth_user_id)
 
   await supabase
