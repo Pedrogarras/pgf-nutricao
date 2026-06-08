@@ -51,17 +51,6 @@ interface DietPlan {
   updated_at: string
 }
 
-const MEAL_EMOJIS: Record<string, string> = {
-  'Café da manhã': '☀️',
-  'Lanche da manhã': '🍎',
-  'Almoço': '🍽️',
-  'Lanche da tarde': '⚡',
-  'Jantar': '🌙',
-  'Ceia': '🌛',
-  'Pré-treino': '🏋️',
-  'Pós-treino': '💪',
-  'Snack': '🥜',
-}
 
 function computeTotals(meal: Meal) {
   let kcal = 0, protein = 0, carbs = 0, fat = 0
@@ -315,7 +304,6 @@ export default function AlunoPlanoPage() {
               {meals.map(meal => {
                 const isOpen = expandedId === meal.id
                 const t = meal.totals!
-                const emoji = meal.emoji ?? MEAL_EMOJIS[meal.name] ?? '🍽️'
                 return (
                   <div
                     key={meal.id}
@@ -327,20 +315,13 @@ export default function AlunoPlanoPage() {
                       className="w-full flex items-center justify-between px-4 py-3.5"
                       onClick={() => setExpandedId(isOpen ? null : meal.id)}
                     >
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-8 h-8 rounded-xl flex items-center justify-center text-base flex-shrink-0"
-                          style={{ background: isOpen ? 'rgba(37,99,235,0.2)' : 'rgba(255,255,255,0.06)' }}
-                        >
-                          {emoji}
+                      <div className="text-left">
+                        <div className="font-semibold text-white text-sm tracking-wide">{meal.name}</div>
+                        <div className="text-[11px] text-white/40 mt-0.5">
+                          {meal.time_start}
+                          {meal.time_start && meal.meal_foods.length > 0 && ' · '}
+                          {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
                         </div>
-                        <div className="text-left">
-                          <div className="font-semibold text-white text-sm">{meal.name}</div>
-                          <div className="text-[11px] text-white/40">
-                            {meal.time_start}
-                            {meal.time_start && meal.meal_foods.length > 0 && ' · '}
-                            {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
-                          </div>
                         </div>
                       </div>
                       <div className="flex items-center gap-3">

@@ -519,9 +519,8 @@ export default async function AlunoPage({
                   {/* Meal header */}
                   <div className="px-4 py-3.5" style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid rgba(37,99,235,0.15)' }}>
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl">{meal.emoji}</span>
                       <div className="flex-1">
-                        <div className="font-bold text-sm text-white">{meal.name}</div>
+                        <div className="font-bold text-sm text-white tracking-wide">{meal.name}</div>
                         {meal.time_start && (
                           <div className="text-xs mt-0.5" style={{ color: 'rgba(197,205,240,0.5)' }}>{meal.time_start}</div>
                         )}
