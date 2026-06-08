@@ -19,7 +19,7 @@ interface LocalPlan { id: string; title?: string | null; kcal_goal: number | nul
 
 // ===================== HELPERS =====================
 function calcMacros(qty: number, food: LocalFood) {
-  const ratio = qty / (food.portion_g || 100)
+  const ratio = qty / 100
   return {
     kcal: food.kcal * ratio,
     protein: food.protein_g * ratio,

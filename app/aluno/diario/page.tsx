@@ -129,7 +129,7 @@ export default function AlunoDiarioPage() {
         const meals = (plan.meals ?? []) as any[]
         const t = meals.reduce((acc: { kcal: number; protein: number; carbs: number; fat: number }, m: { meal_foods: { quantity_g: number; food: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number } }[] }) => {
           m.meal_foods?.forEach(mf => {
-            const r = mf.quantity_g / (mf.food?.portion_g || 100)
+            const r = mf.quantity_g / 100
             acc.kcal += (mf.food?.kcal ?? 0) * r
             acc.protein += (mf.food?.protein_g ?? 0) * r
             acc.carbs += (mf.food?.carbs_g ?? 0) * r

@@ -64,7 +64,7 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
   const meals = (activePlan?.meals ?? []) as any[]
   const planTotals = meals.reduce((acc: { kcal: number; protein: number; carbs: number; fat: number }, m: { meal_foods: { quantity_g: number; food: { kcal: number; protein_g: number; carbs_g: number; fat_g: number; portion_g: number } }[] }) => {
     m.meal_foods?.forEach(mf => {
-      const ratio = mf.quantity_g / (mf.food?.portion_g || 100)
+      const ratio = mf.quantity_g / 100
       acc.kcal += (mf.food?.kcal ?? 0) * ratio
       acc.protein += (mf.food?.protein_g ?? 0) * ratio
       acc.carbs += (mf.food?.carbs_g ?? 0) * ratio
@@ -320,7 +320,7 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
                   {/* Meals list */}
                   <div className="space-y-1.5">
                     {meals.sort((a: { sort_order: number }, b: { sort_order: number }) => a.sort_order - b.sort_order).map((m: { id: string; name: string; emoji: string; time_start: string | null; meal_foods: { quantity_g: number; food: { kcal: number; portion_g: number; protein_g: number; carbs_g: number; fat_g: number } }[] }) => {
-                      const mKcal = m.meal_foods?.reduce((s, mf) => s + mf.food.kcal * (mf.quantity_g / (mf.food.portion_g || 100)), 0) ?? 0
+                      const mKcal = m.meal_foods?.reduce((s, mf) => s + mf.food.kcal * (mf.quantity_g / 100), 0) ?? 0
                       return (
                         <div key={m.id} className="flex items-center justify-between text-sm">
                           <span className="text-gray-700">{m.emoji || '🍽️'} {m.name}</span>

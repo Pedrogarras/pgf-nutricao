@@ -57,7 +57,7 @@ function computeTotals(meal: Meal) {
   let kcal = 0, protein = 0, carbs = 0, fat = 0
   for (const mf of meal.meal_foods) {
     if (!mf.food) continue
-    const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+    const ratio = mf.quantity_g / 100
     kcal += mf.food.kcal * ratio
     protein += mf.food.protein_g * ratio
     carbs += mf.food.carbs_g * ratio

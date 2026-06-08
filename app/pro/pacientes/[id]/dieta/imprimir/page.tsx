@@ -50,7 +50,7 @@ interface DietPlan {
 }
 
 function macros(mf: MealFood) {
-  const ratio = mf.quantity_g / (mf.food.portion_g || 100)
+  const ratio = mf.quantity_g / 100
   return {
     kcal:    Math.round(mf.food.kcal * ratio),
     protein: Math.round(mf.food.protein_g * ratio * 10) / 10,
