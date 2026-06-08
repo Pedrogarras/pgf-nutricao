@@ -4,7 +4,7 @@ import Link from 'next/link'
 import type { Patient, Food } from '@/lib/types'
 import {
   saveDietPlan, addMeal, removeMeal, addFoodToMeal, removeFoodFromMeal,
-  updateMealFood, addSubstitute, removeSubstitute, publishPlan, applyTemplate, updateMeal,
+  updateMealFood, addSubstitute, removeSubstitute, swapSubstitute, publishPlan, applyTemplate, updateMeal,
   reorderMeal, reorderMealFood, duplicateMeal, saveMealAsTemplate, applyMealTemplate
 } from './actions'
 
@@ -702,6 +702,7 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
   const [showSubs, setShowSubs] = useState(true)
   const [copyMenuOpen, setCopyMenuOpen] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [swappingId, setSwappingId] = useState<string | null>(null)
 
   async function handleCopyToMeal(targetMealId: string) {
     setCopying(true)
@@ -712,6 +713,30 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
       const newMf: LocalMealFood = { ...result.data, food: mf.food, substitutes: [] }
       onCopied(targetMealId, newMf)
     }
+  }
+
+  async function handleSwap(sub: LocalSubstitute) {
+    setSwappingId(sub.id)
+    const result = await swapSubstitute(mf.id, sub.id)
+    if (result?.error) { setSwappingId(null); alert(result.error); return }
+
+    // Optimistic swap in local state: mf gets sub's food/qty, sub gets mf's food/qty
+    const updatedSub: LocalSubstitute = {
+      ...sub,
+      food: mf.food,
+      quantity_g: mf.quantity_g,
+      quantity_description: mf.quantity_description,
+    }
+    const updatedMf: LocalMealFood = {
+      ...mf,
+      food: sub.food,
+      food_id: sub.food.id,
+      quantity_g: sub.quantity_g,
+      quantity_description: sub.quantity_description ?? `${sub.quantity_g}g`,
+      substitutes: mf.substitutes.map(s => s.id === sub.id ? updatedSub : s),
+    }
+    onFullUpdate(updatedMf)
+    setSwappingId(null)
   }
 
   const m = calcMacros(mf.quantity_g, mf.food)
@@ -959,6 +984,18 @@ function MealFoodRow({ mf, onQtyChange, onRemove, onSubAdded, onSubRemoved, onSu
 
                 {/* Actions */}
                 <div className="flex items-center justify-center gap-1">
+                  {/* Swap: promove substituto a alimento principal */}
+                  <button
+                    onClick={() => handleSwap(sub)}
+                    disabled={swappingId === sub.id}
+                    title="Substituir alimento principal por este"
+                    className="text-[9px] font-bold px-1.5 py-0.5 rounded border transition-colors disabled:opacity-40"
+                    style={{ color: '#2563EB', borderColor: 'rgba(37,99,235,0.35)', background: 'rgba(37,99,235,0.06)' }}
+                    onMouseEnter={e => { if (swappingId !== sub.id) (e.currentTarget as HTMLElement).style.background = 'rgba(37,99,235,0.14)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(37,99,235,0.06)' }}
+                  >
+                    {swappingId === sub.id ? '...' : '⇄'}
+                  </button>
                   <button
                     onClick={() => setEditingSub(sub)}
                     title="Editar substituto"

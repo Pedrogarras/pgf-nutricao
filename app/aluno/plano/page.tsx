@@ -81,12 +81,16 @@ function computeTotals(meal: Meal) {
   }
 }
 
+// swappedFoods: maps mealFoodId → substituteId (or null = original)
+type SwapMap = Record<string, string | null>
+
 export default function AlunoPlanoPage() {
   const [plan, setPlan] = useState<DietPlan | null>(null)
   const [meals, setMeals] = useState<Meal[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [noPlan, setNoPlan] = useState(false)
+  const [swappedFoods, setSwappedFoods] = useState<SwapMap>({})
 
   useEffect(() => {
     loadPlan()
@@ -151,12 +155,26 @@ export default function AlunoPlanoPage() {
         }))
       setMeals(withTotals)
 
+      // Load saved swaps from localStorage
+      try {
+        const saved = localStorage.getItem(`pgf-swaps-${planData.id}`)
+        if (saved) setSwappedFoods(JSON.parse(saved))
+      } catch { /* ignore */ }
+
       // Auto-expand first meal
       if (withTotals.length > 0) setExpandedId(withTotals[0].id)
     } catch {
       setNoPlan(true)
     }
     setLoading(false)
+  }
+
+  function handleSwap(mfId: string, subId: string | null) {
+    setSwappedFoods(prev => {
+      const next = { ...prev, [mfId]: subId }
+      try { if (plan) localStorage.setItem(`pgf-swaps-${plan.id}`, JSON.stringify(next)) } catch { /* ignore */ }
+      return next
+    })
   }
 
   const grandTotals = meals.reduce(
@@ -345,38 +363,79 @@ export default function AlunoPlanoPage() {
                           <div className="px-4 py-3 space-y-2">
                             {meal.meal_foods.map(mf => {
                               if (!mf.food) return null
-                              const ratio = mf.quantity_g / (mf.food.portion_g || 100)
-                              const kcal = Math.round(mf.food.kcal * ratio)
-                              const desc = mf.quantity_description ?? `${mf.quantity_g}g`
+                              const activeSubId = swappedFoods[mf.id] ?? null
+                              const activeSub = activeSubId ? (mf.substitutes ?? []).find(s => s.id === activeSubId) ?? null : null
+                              // Use either the swapped food or the original
+                              const displayFood = activeSub?.food ?? mf.food
+                              const displayQty = activeSub?.quantity_g ?? mf.quantity_g
+                              const displayDesc = activeSub?.quantity_description ?? mf.quantity_description ?? `${mf.quantity_g}g`
+                              const ratio = displayQty / (displayFood.portion_g || 100)
+                              const kcal = Math.round(displayFood.kcal * ratio)
+                              const hasSubs = (mf.substitutes ?? []).length > 0
                               return (
                                 <div
                                   key={mf.id}
-                                  className="flex items-center justify-between py-2 px-3 rounded-xl"
-                                  style={{ background: 'rgba(255,255,255,0.04)' }}
+                                  className="rounded-xl overflow-hidden"
+                                  style={{ background: activeSub ? 'rgba(37,99,235,0.07)' : 'rgba(255,255,255,0.04)', border: `1px solid ${activeSub ? 'rgba(37,99,235,0.2)' : 'rgba(255,255,255,0.0)'}` }}
                                 >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="text-white/90 text-sm font-medium">{mf.food.name}</div>
-                                    <div className="text-white/35 text-xs mt-0.5">{desc}</div>
-                                    {mf.notes && <div className="text-white/25 text-xs italic mt-0.5">{mf.notes}</div>}
-                                    {mf.substitutes && mf.substitutes.length > 0 && (
-                                      <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
-                                        <span className="text-[10px] font-bold text-amber-400/70 uppercase tracking-wide flex-shrink-0">OU</span>
-                                        {mf.substitutes.map((s, si) => (
-                                          <span key={s.id} className="text-[10px] text-white/40">
-                                            {s.food?.name ?? '—'}{s.quantity_description ? ` (${s.quantity_description})` : s.quantity_g ? ` (${s.quantity_g}g)` : ''}{si < mf.substitutes!.length - 1 ? ' ·' : ''}
-                                          </span>
-                                        ))}
+                                  {/* Main food row */}
+                                  <div className="flex items-start justify-between py-2.5 px-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-white/90 text-sm font-medium">{displayFood.name}</div>
+                                      <div className="text-white/35 text-xs mt-0.5">{displayDesc}</div>
+                                      {!activeSub && mf.notes && (
+                                        <div className="text-white/25 text-xs italic mt-0.5">{mf.notes}</div>
+                                      )}
+                                      {activeSub && (
+                                        <div className="text-[10px] mt-0.5 flex items-center gap-1.5">
+                                          <span style={{ color: 'rgba(37,99,235,0.7)' }}>↕ trocado</span>
+                                          <span className="text-white/25">original: {mf.food.name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div className="text-right flex-shrink-0 ml-3">
+                                      <div className="text-white/80 text-sm font-bold">{kcal} kcal</div>
+                                      <div className="text-[10px] text-white/30">
+                                        P{Math.round(displayFood.protein_g * ratio)}g
+                                        {' '}C{Math.round(displayFood.carbs_g * ratio)}g
+                                        {' '}G{Math.round(displayFood.fat_g * ratio)}g
                                       </div>
-                                    )}
-                                  </div>
-                                  <div className="text-right flex-shrink-0 ml-3">
-                                    <div className="text-white/80 text-sm font-bold">{kcal} kcal</div>
-                                    <div className="text-[10px] text-white/30">
-                                      P{Math.round(mf.food.protein_g * ratio)}g
-                                      {' '}C{Math.round(mf.food.carbs_g * ratio)}g
-                                      {' '}G{Math.round(mf.food.fat_g * ratio)}g
                                     </div>
                                   </div>
+
+                                  {/* Substitutes selector */}
+                                  {hasSubs && (
+                                    <div className="px-3 pb-2.5 flex flex-wrap gap-1.5">
+                                      {/* Restore original pill (shown when swapped) */}
+                                      {activeSub && (
+                                        <button
+                                          onClick={() => handleSwap(mf.id, null)}
+                                          className="text-[10px] font-semibold px-2.5 py-1 rounded-full transition-all"
+                                          style={{ background: 'rgba(37,99,235,0.12)', color: '#93C5FD', border: '1px solid rgba(37,99,235,0.3)' }}
+                                        >
+                                          ↩ original
+                                        </button>
+                                      )}
+                                      {(mf.substitutes ?? []).map(s => {
+                                        if (!s.food) return null
+                                        const isActive = s.id === activeSubId
+                                        return (
+                                          <button
+                                            key={s.id}
+                                            onClick={() => handleSwap(mf.id, isActive ? null : s.id)}
+                                            className="text-[10px] font-medium px-2.5 py-1 rounded-full transition-all"
+                                            style={isActive
+                                              ? { background: 'rgba(37,99,235,0.25)', color: '#BFDBFE', border: '1px solid rgba(37,99,235,0.5)' }
+                                              : { background: 'rgba(245,158,11,0.08)', color: 'rgba(245,158,11,0.7)', border: '1px solid rgba(245,158,11,0.2)' }
+                                            }
+                                          >
+                                            {isActive ? '✓ ' : 'OU '}{s.food.name}
+                                            <span className="ml-1 opacity-60">{s.quantity_description ?? `${s.quantity_g}g`}</span>
+                                          </button>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
                               )
                             })}

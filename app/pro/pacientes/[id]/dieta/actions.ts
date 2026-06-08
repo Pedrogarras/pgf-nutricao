@@ -144,6 +144,44 @@ export async function addSubstitute(mealFoodId: string, foodId: string, quantity
   return { data }
 }
 
+// ─── Swap: troca alimento principal ↔ substituto ─────────────────────────────
+export async function swapSubstitute(mealFoodId: string, substituteId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const ownerId = await getMealFoodOwnerId(supabase, mealFoodId)
+  if (ownerId !== user.id) return { error: 'Não autorizado' }
+
+  // Fetch current values for both records
+  const [{ data: mf }, { data: sub }] = await Promise.all([
+    supabase.from('meal_foods')
+      .select('food_id, quantity_g, quantity_description')
+      .eq('id', mealFoodId).single(),
+    supabase.from('meal_food_substitutes')
+      .select('food_id, quantity_g, quantity_description')
+      .eq('id', substituteId).eq('meal_food_id', mealFoodId).single(),
+  ])
+  if (!mf || !sub) return { error: 'Não encontrado' }
+
+  // Atomic swap — meal_food takes substitute's values, substitute takes meal_food's values
+  const [r1, r2] = await Promise.all([
+    supabase.from('meal_foods').update({
+      food_id: sub.food_id,
+      quantity_g: sub.quantity_g,
+      quantity_description: sub.quantity_description,
+    }).eq('id', mealFoodId),
+    supabase.from('meal_food_substitutes').update({
+      food_id: mf.food_id,
+      quantity_g: mf.quantity_g,
+      quantity_description: mf.quantity_description,
+    }).eq('id', substituteId),
+  ])
+  if (r1.error) return { error: r1.error.message }
+  if (r2.error) return { error: r2.error.message }
+  return { ok: true }
+}
+
 export async function removeSubstitute(substituteId: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
