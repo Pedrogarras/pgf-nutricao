@@ -4,6 +4,7 @@ import { logout } from '@/app/login/actions'
 import Link from 'next/link'
 import CheckInForm from './CheckInForm'
 import WorkoutDayTabs from './WorkoutDayTabs'
+import PrintButton from './PrintButton'
 
 export default async function AlunoPage({
   searchParams,
@@ -666,11 +667,7 @@ export default async function AlunoPage({
               )
             })()}
 
-            <button onClick={() => window.print()}
-              className="w-full py-3 rounded-xl text-sm font-semibold transition-all"
-              style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border2)', color: '#9BAAE6' }}>
-              Baixar Plano em PDF
-            </button>
+            <PrintButton />
           </>
         ) : (
           <div className="rounded-2xl p-6 text-center"
