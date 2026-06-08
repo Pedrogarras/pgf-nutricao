@@ -80,6 +80,7 @@ export default function AlunoPlanoPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [noPlan, setNoPlan] = useState(false)
   const [swappedFoods, setSwappedFoods] = useState<SwapMap>({})
+  const [includedMeals, setIncludedMeals] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     loadPlan()
@@ -150,6 +151,18 @@ export default function AlunoPlanoPage() {
         if (saved) setSwappedFoods(JSON.parse(saved))
       } catch (_) { /* ignore */ }
 
+      // Load included meals (default = all included)
+      try {
+        const savedIncluded = localStorage.getItem(`pgf-included-${planData.id}`)
+        if (savedIncluded) {
+          setIncludedMeals(new Set(JSON.parse(savedIncluded)))
+        } else {
+          setIncludedMeals(new Set(withTotals.map(m => m.id)))
+        }
+      } catch (_) {
+        setIncludedMeals(new Set(withTotals.map(m => m.id)))
+      }
+
       // Auto-expand first meal
       if (withTotals.length > 0) setExpandedId(withTotals[0].id)
     } catch (_) {
@@ -166,15 +179,27 @@ export default function AlunoPlanoPage() {
     })
   }
 
-  const grandTotals = meals.reduce(
-    (acc, m) => ({
-      kcal: acc.kcal + (m.totals?.kcal ?? 0),
-      protein: acc.protein + (m.totals?.protein ?? 0),
-      carbs: acc.carbs + (m.totals?.carbs ?? 0),
-      fat: acc.fat + (m.totals?.fat ?? 0),
-    }),
-    { kcal: 0, protein: 0, carbs: 0, fat: 0 }
-  )
+  function toggleMealInclusion(mealId: string) {
+    setIncludedMeals(prev => {
+      const next = new Set(prev)
+      if (next.has(mealId)) { next.delete(mealId) } else { next.add(mealId) }
+      try { if (plan) localStorage.setItem(`pgf-included-${plan.id}`, JSON.stringify(Array.from(next))) } catch (_) { /* ignore */ }
+      return next
+    })
+  }
+
+  const grandTotals = meals
+    .filter(m => includedMeals.has(m.id))
+    .reduce(
+      (acc, m) => ({
+        kcal: acc.kcal + (m.totals?.kcal ?? 0),
+        protein: acc.protein + (m.totals?.protein ?? 0),
+        carbs: acc.carbs + (m.totals?.carbs ?? 0),
+        fat: acc.fat + (m.totals?.fat ?? 0),
+      }),
+      { kcal: 0, protein: 0, carbs: 0, fat: 0 }
+    )
+  const excludedCount = meals.length - includedMeals.size
 
   const goalKcal = plan?.kcal_goal ?? grandTotals.kcal
   const goalProtein = plan?.protein_goal_g ?? grandTotals.protein
@@ -303,36 +328,56 @@ export default function AlunoPlanoPage() {
             <div className="space-y-2">
               {meals.map(meal => {
                 const isOpen = expandedId === meal.id
+                const isIncluded = includedMeals.has(meal.id)
                 const t = meal.totals!
                 return (
                   <div
                     key={meal.id}
                     className="rounded-2xl overflow-hidden transition-all"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${isOpen ? 'rgba(37,99,235,0.4)' : 'rgba(255,255,255,0.08)'}` }}
+                    style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${isOpen ? 'rgba(37,99,235,0.4)' : 'rgba(255,255,255,0.08)'}`, opacity: isIncluded ? 1 : 0.55 }}
                   >
                     {/* Meal header */}
-                    <button
-                      className="w-full flex items-center justify-between px-4 py-3.5"
-                      onClick={() => setExpandedId(isOpen ? null : meal.id)}
-                    >
-                      <div className="text-left">
-                        <div className="font-semibold text-white text-sm tracking-wide">{meal.name}</div>
-                        <div className="text-[11px] text-white/40 mt-0.5">
-                          {meal.time_start}
-                          {meal.time_start && meal.meal_foods.length > 0 && ' · '}
-                          {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
+                    <div className="flex items-center">
+                      {/* Include/exclude toggle */}
+                      <button
+                        onClick={() => toggleMealInclusion(meal.id)}
+                        className="pl-4 pr-2 py-3.5 flex-shrink-0 flex items-center"
+                        title={isIncluded ? 'Tirar do cálculo diário' : 'Incluir no cálculo diário'}
+                      >
+                        <div className={`w-4 h-4 rounded flex items-center justify-center transition-all border-2 ${isIncluded ? 'bg-blue-600 border-blue-600' : 'border-white/25 bg-transparent'}`}>
+                          {isIncluded && (
+                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 10 10" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M1.5 5l2.5 2.5 4.5-4.5" />
+                            </svg>
+                          )}
                         </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="text-right">
-                          <div className="text-sm font-black text-white">{t.kcal} kcal</div>
-                          <div className="text-[10px] text-white/40">
-                            P{Math.round(t.protein)}g C{Math.round(t.carbs)}g G{Math.round(t.fat)}g
+                      </button>
+
+                      {/* Expand button */}
+                      <button
+                        className="flex-1 flex items-center justify-between pr-4 py-3.5"
+                        onClick={() => setExpandedId(isOpen ? null : meal.id)}
+                      >
+                        <div className="text-left">
+                          <div className={`font-semibold text-sm tracking-wide ${isIncluded ? 'text-white' : 'text-white/60'}`}>{meal.name}</div>
+                          <div className="text-[11px] text-white/40 mt-0.5">
+                            {meal.time_start}
+                            {meal.time_start && meal.meal_foods.length > 0 && ' · '}
+                            {meal.meal_foods.length} item{meal.meal_foods.length !== 1 ? 'ns' : ''}
+                            {!isIncluded && <span className="ml-1 text-white/30">· fora do total</span>}
                           </div>
                         </div>
-                        <span className="text-white/30 text-xs">{isOpen ? '▾' : '▸'}</span>
-                      </div>
-                    </button>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="text-sm font-black text-white">{t.kcal} kcal</div>
+                            <div className="text-[10px] text-white/40">
+                              P{Math.round(t.protein)}g C{Math.round(t.carbs)}g G{Math.round(t.fat)}g
+                            </div>
+                          </div>
+                          <span className="text-white/30 text-xs">{isOpen ? '▾' : '▸'}</span>
+                        </div>
+                      </button>
+                    </div>
 
                     {/* Expanded food list */}
                     {isOpen && (
@@ -458,7 +503,12 @@ export default function AlunoPlanoPage() {
               className="mt-4 rounded-2xl p-4"
               style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)' }}
             >
-              <div className="text-xs text-white/40 font-semibold uppercase tracking-wide mb-3">Total diário do plano</div>
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs text-white/40 font-semibold uppercase tracking-wide">Total diário do plano</div>
+                {excludedCount > 0 && (
+                  <div className="text-[10px] text-amber-400/70">{excludedCount} refeição{excludedCount > 1 ? 'ões' : ''} fora do cálculo</div>
+                )}
+              </div>
               <div className="grid grid-cols-4 gap-3 text-center">
                 {[
                   { label: 'Kcal', value: Math.round(grandTotals.kcal), color: 'text-white' },
