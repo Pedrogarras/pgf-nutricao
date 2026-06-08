@@ -3,12 +3,20 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
+interface Substitute {
+  id: string
+  quantity_g: number
+  quantity_description: string | null
+  food: { name: string } | null
+}
+
 interface MealFood {
   id: string
   quantity_g: number
   quantity_description: string | null
   notes: string | null
   sort_order: number
+  substitutes?: Substitute[]
   food: {
     name: string
     kcal: number
@@ -106,7 +114,8 @@ export default function AlunoPlanoPage() {
             id, name, time_start, emoji, sort_order, notes,
             meal_foods(
               id, quantity_g, quantity_description, notes, sort_order,
-              food:foods(name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g, portion_description)
+              food:foods(name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g, portion_description),
+              substitutes:meal_food_substitutes(id, quantity_g, quantity_description, food:foods(name))
             )
           )
         `)
@@ -345,10 +354,20 @@ export default function AlunoPlanoPage() {
                                   className="flex items-center justify-between py-2 px-3 rounded-xl"
                                   style={{ background: 'rgba(255,255,255,0.04)' }}
                                 >
-                                  <div>
+                                  <div className="flex-1 min-w-0">
                                     <div className="text-white/90 text-sm font-medium">{mf.food.name}</div>
                                     <div className="text-white/35 text-xs mt-0.5">{desc}</div>
                                     {mf.notes && <div className="text-white/25 text-xs italic mt-0.5">{mf.notes}</div>}
+                                    {mf.substitutes && mf.substitutes.length > 0 && (
+                                      <div className="mt-1.5 flex flex-wrap items-center gap-x-1 gap-y-0.5">
+                                        <span className="text-[10px] font-bold text-amber-400/70 uppercase tracking-wide flex-shrink-0">OU</span>
+                                        {mf.substitutes.map((s, si) => (
+                                          <span key={s.id} className="text-[10px] text-white/40">
+                                            {s.food?.name ?? '—'}{s.quantity_description ? ` (${s.quantity_description})` : s.quantity_g ? ` (${s.quantity_g}g)` : ''}{si < mf.substitutes!.length - 1 ? ' ·' : ''}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="text-right flex-shrink-0 ml-3">
                                     <div className="text-white/80 text-sm font-bold">{kcal} kcal</div>

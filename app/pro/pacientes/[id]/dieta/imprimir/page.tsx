@@ -1,12 +1,21 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound, redirect } from 'next/navigation'
 
+interface Substitute {
+  id: string
+  quantity_g: number
+  quantity_description: string | null
+  sort_order: number
+  food: { name: string } | null
+}
+
 interface MealFood {
   id: string
   quantity_g: number
   quantity_description: string | null
   notes: string | null
   sort_order: number
+  substitutes?: Substitute[]
   food: {
     id: string
     name: string
@@ -78,7 +87,8 @@ export default async function ImprimirDietaPage({
       .select(`id, title, kcal_goal, protein_goal_g, carbs_goal_g, fat_goal_g, notes,
         meals(id, name, time_start, emoji, sort_order, notes,
           meal_foods(id, quantity_g, quantity_description, notes, sort_order,
-            food:foods(id, name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g)
+            food:foods(id, name, kcal, protein_g, carbs_g, fat_g, fiber_g, portion_g),
+            substitutes:meal_food_substitutes(id, quantity_g, quantity_description, sort_order, food:foods(name))
           )
         )`)
       .eq('patient_id', id)
@@ -246,6 +256,18 @@ export default async function ImprimirDietaPage({
                           <td style={{ padding: '7px 10px', fontWeight: '500', color: '#111' }}>
                             {mf.food.name}
                             {mf.notes && <div style={{ fontSize: '10px', color: '#9CA3AF', fontStyle: 'italic' }}>{mf.notes}</div>}
+                            {mf.substitutes && mf.substitutes.length > 0 && (
+                              <div style={{ fontSize: '10px', color: '#6B7280', marginTop: '3px' }}>
+                                <span style={{ fontWeight: '700', color: '#D97706', marginRight: '4px' }}>OU:</span>
+                                {[...mf.substitutes]
+                                  .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+                                  .map((s, si, arr) => (
+                                    <span key={s.id}>
+                                      {s.food?.name ?? '—'}{s.quantity_description ? ` (${s.quantity_description})` : s.quantity_g ? ` (${s.quantity_g}g)` : ''}{si < arr.length - 1 ? ' · ' : ''}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: '7px 10px', textAlign: 'right', color: '#374151' }}>{mf.quantity_g}g</td>
                           <td style={{ padding: '7px 10px', textAlign: 'right', color: '#6B7280', fontSize: '11px' }}>{mf.quantity_description ?? '—'}</td>

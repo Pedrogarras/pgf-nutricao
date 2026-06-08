@@ -1,6 +1,12 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+
+interface SupplementLog {
+  supplement_id: string
+  logged_date: string
+  taken: boolean
+}
 
 interface Supplement {
   id: string
@@ -34,7 +40,9 @@ export default function AlunoSupplementsPage() {
   const [supplements, setSupplements] = useState<Supplement[]>([])
   const [loading, setLoading] = useState(true)
   const [checked, setChecked] = useState<Set<string>>(new Set())
-  const [tab, setTab] = useState<'hoje' | 'todos'>('hoje')
+  const [tab, setTab] = useState<'hoje' | 'todos' | 'historico'>('hoje')
+  const [history30, setHistory30] = useState<SupplementLog[]>([])
+  const [histLoading, setHistLoading] = useState(false)
   const [toggling, setToggling] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -110,6 +118,19 @@ export default function AlunoSupplementsPage() {
     grouped[s.timing].push(s)
   }
   const timingOrder = TIMING_OPTIONS.map(t => t.value).filter(v => grouped[v])
+
+  const loadHistory = useCallback(async () => {
+    if (histLoading || history30.length > 0) return
+    setHistLoading(true)
+    const from = new Date(Date.now() - 29 * 86400000).toISOString().split('T')[0]
+    const to = TODAY
+    try {
+      const res = await fetch(`/api/supplement-logs?from=${from}&to=${to}`)
+      const data = await res.json()
+      setHistory30(data.logs ?? [])
+    } catch { /* ignore */ }
+    setHistLoading(false)
+  }, [histLoading, history30.length])
 
   const checkedCount = supplements.filter(s => checked.has(s.id)).length
   const totalCount = supplements.length
@@ -198,10 +219,14 @@ export default function AlunoSupplementsPage() {
             {/* Tabs */}
             <div className="flex gap-2 mb-4">
               {[
-                { key: 'hoje', label: '📅 Checklist do dia' },
-                { key: 'todos', label: '📋 Todos prescritos' },
+                { key: 'hoje', label: '📅 Hoje' },
+                { key: 'historico', label: '📆 Histórico' },
+                { key: 'todos', label: '📋 Todos' },
               ].map(t => (
-                <button key={t.key} onClick={() => setTab(t.key as typeof tab)}
+                <button key={t.key} onClick={() => {
+                  setTab(t.key as typeof tab)
+                  if (t.key === 'historico') loadHistory()
+                }}
                   className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
                   style={{
                     background: tab === t.key ? 'var(--dark-accent)' : 'rgba(255,255,255,0.05)',
@@ -344,6 +369,100 @@ export default function AlunoSupplementsPage() {
                 ))}
               </div>
             )}
+
+            {/* 30-day History calendar */}
+            {tab === 'historico' && (() => {
+              if (histLoading) return (
+                <div className="text-center py-10 text-sm" style={{ color: 'rgba(255,255,255,0.3)' }}>Carregando histórico…</div>
+              )
+              // Build 30-day array
+              const days = Array.from({ length: 30 }, (_, i) => {
+                const d = new Date(Date.now() - (29 - i) * 86400000).toISOString().split('T')[0]
+                const dayLogs = history30.filter(l => l.logged_date === d && l.taken)
+                const expected = totalCount
+                const taken = dayLogs.length
+                const pct = expected > 0 ? Math.round((taken / expected) * 100) : 0
+                return { date: d, taken, expected, pct }
+              })
+              const monthAdherence = (() => {
+                const totalTaken = days.reduce((s, d) => s + d.taken, 0)
+                const totalExpected = days.reduce((s, d) => s + d.expected, 0)
+                return totalExpected > 0 ? Math.round((totalTaken / totalExpected) * 100) : 0
+              })()
+              const loggedDays = days.filter(d => d.taken > 0).length
+              // Streak
+              let streak = 0
+              for (let i = days.length - 1; i >= 0; i--) {
+                if (days[i].pct >= 100) streak++
+                else if (i === days.length - 1) continue // allow missing today
+                else break
+              }
+              return (
+                <div className="space-y-4">
+                  {/* Summary */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { label: 'Aderência 30d', value: `${monthAdherence}%`, color: monthAdherence >= 80 ? '#4ADE80' : monthAdherence >= 50 ? '#FBBF24' : '#F87171' },
+                      { label: 'Dias registrados', value: loggedDays, color: '#60A5FA' },
+                      { label: 'Sequência', value: streak, color: streak >= 7 ? '#FCD34D' : '#9CA3AF' },
+                    ].map(s => (
+                      <div key={s.label} className="rounded-xl p-3 text-center"
+                        style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+                        <div className="text-lg font-black" style={{ color: s.color }}>{s.value}</div>
+                        <div className="text-[9px] mt-0.5 leading-tight" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Calendar heatmap */}
+                  <div className="rounded-2xl p-4"
+                    style={{ background: 'var(--dark-card)', border: '1px solid var(--dark-border)' }}>
+                    <div className="text-[10px] font-bold uppercase tracking-[2px] mb-3" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      Calendário de 30 dias
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {days.map(day => {
+                        const isToday = day.date === TODAY
+                        const bg = day.pct === 0
+                          ? 'rgba(255,255,255,0.05)'
+                          : day.pct >= 100
+                            ? 'rgba(74,222,128,0.75)'
+                            : day.pct >= 50
+                              ? 'rgba(251,191,36,0.55)'
+                              : 'rgba(251,191,36,0.25)'
+                        const label = new Date(day.date + 'T12:00').getDate()
+                        return (
+                          <div
+                            key={day.date}
+                            title={`${day.date}: ${day.taken}/${day.expected} suplementos (${day.pct}%)`}
+                            className="flex flex-col items-center gap-0.5"
+                            style={{ width: 32 }}
+                          >
+                            <div
+                              style={{
+                                width: 28, height: 28, borderRadius: 8,
+                                background: bg,
+                                outline: isToday ? '2px solid #2563EB' : undefined,
+                                outlineOffset: isToday ? 1 : undefined,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 10, fontWeight: 700,
+                                color: day.pct >= 50 ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.4)',
+                              }}
+                            >
+                              {label}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                    <div className="flex items-center gap-3 mt-3 text-[10px]" style={{ color: 'rgba(255,255,255,0.3)' }}>
+                      <div className="flex items-center gap-1"><div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(255,255,255,0.05)' }} /><span>0%</span></div>
+                      <div className="flex items-center gap-1"><div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(251,191,36,0.35)' }} /><span>Parcial</span></div>
+                      <div className="flex items-center gap-1"><div style={{ width: 12, height: 12, borderRadius: 3, background: 'rgba(74,222,128,0.75)' }} /><span>100%</span></div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             <div className="rounded-xl p-4 text-center text-xs mt-4"
               style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.15)', color: 'rgba(255,255,255,0.35)' }}>
